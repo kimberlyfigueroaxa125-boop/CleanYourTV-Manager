@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
     QCheckBox,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QStackedWidget,
+    QVBoxLayout,
     QWidget,
 )
 from PySide6.QtUiTools import QUiLoader
@@ -218,10 +220,10 @@ def main() -> int:
         current = project(False)
         if current is None:
             return None
-        name = required(QListWidget, "themesList").currentItem()
-        if name is None:
+        item = required(QListWidget, "themesList").currentItem()
+        if item is None:
             return None
-        return next((item for item in discover_themes(current) if item.name == name.text()), None)
+        return next((theme for theme in discover_themes(current) if theme.name == item.text()), None)
 
     def selected_addon() -> AddonInfo | None:
         current = project(False)
@@ -425,29 +427,35 @@ def main() -> int:
     button("deleteCleanButton").clicked.connect(uninstall_clean_your_tv_locally)
     button("deleteCleanFromTvButton").clicked.connect(uninstall_clean_your_tv_from_tv)
 
-    # The XML UI keeps the main layout stable; these controls are added to its named
-    # action rows so the installation features remain real Qt Designer UI elements.
-    themes_layout = window.findChild(object, "themesActionLayout")
-    addons_layout = window.findChild(object, "addonsLayout")
+    # Add installation controls to the named XML layouts. This keeps the UI XML as
+    # the source of the page structure while the buttons remain ordinary Qt widgets.
+    themes_layout = window.findChild(QHBoxLayout, "themesActionLayout")
     if themes_layout is not None:
         theme_install = QPushButton("Install Selected Theme")
-        theme_install.setProperty("class", "action")
         theme_install.clicked.connect(apply_selected_theme)
         themes_layout.addWidget(theme_install)
         theme_reset = QPushButton("Reset Theme")
         theme_reset.clicked.connect(reset_theme_on_tv)
         themes_layout.addWidget(theme_reset)
+
+    addons_layout = window.findChild(QVBoxLayout, "addonsLayout")
     if addons_layout is not None:
         addon_install = QPushButton("Build & Install Selected Add-on")
-        addon_install.setProperty("class", "action")
         addon_install.clicked.connect(install_selected_addon)
-        addons_layout.addWidget(addon_install)
+        addons_layout.insertWidget(3, addon_install)
+
+    themes_text = window.findChild(QLabel, "themesText")
+    if themes_text is not None:
+        themes_text.setText("Select a theme from the local CleanYourTV repository and install it directly to the connected TV. The upstream theme.ps1 tool handles the on-TV files and Home restart.")
+    addons_text = window.findChild(QLabel, "addonsText")
+    if addons_text is not None:
+        addons_text.setText("Select an add-on from the local CleanYourTV repository. The manager builds its Gradle project when needed, finds the release APK and installs it to the connected TV with ADB.")
 
     ip_edit.setText(os.environ.get("TV_HOST", ""))
     refresh_backups()
     write_log("> CleanYourTV Manager started")
-    write_log("> Themes: select a theme and use Install Selected Theme.")
-    write_log("> Add-ons: select an add-on and use Build & Install Selected Add-on.")
+    write_log("> Themes: select a theme and install it directly to the TV.")
+    write_log("> Add-ons: select an add-on, build it when needed, and install its APK.")
     write_log("> TV removal restores and verifies the stock Home before uninstalling.")
     navigate("homeButton")
     window.show()
