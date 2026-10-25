@@ -107,6 +107,14 @@ def main() -> int:
             return
         index = stack.indexOf(page)
         if index < 0:
+            # Qt object lookup can miss pages depending on the loader ownership tree.
+            # Resolve by traversing the stack children and verify the object is a direct page.
+            page = next((child for child in stack.findChildren(QWidget) if child.objectName() == page_name), None)
+            if page is None:
+                write_log(f"> Navigation error: page not in QStackedWidget: {page_name}")
+                return
+            index = stack.indexOf(page)
+        if index < 0:
             write_log(f"> Navigation error: page not in QStackedWidget: {page_name}")
             return
         stack.setCurrentIndex(index)
