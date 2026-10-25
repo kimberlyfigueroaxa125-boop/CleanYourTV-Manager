@@ -2,36 +2,46 @@
 
 > Unofficial community Windows GUI for installing and managing [CleanYourTV](https://github.com/Gathin23/cleanyourtv) on Android TV.
 
-[![Build Windows](https://github.com/kimberlyfigueroaxa125-boop/CleanYourTV-Manager/actions/workflows/build-windows.yml/badge.svg)](https://github.com/kimberlyfigueroaxa125-boop/CleanYourTV-Manager/actions/workflows/build-windows.yml)
+[![Windows CI](https://github.com/kimberlyfigueroaxa125-boop/CleanYourTV-Manager/actions/workflows/build-windows.yml/badge.svg)](https://github.com/kimberlyfigueroaxa125-boop/CleanYourTV-Manager/actions/workflows/build-windows.yml)
 
 CleanYourTV Manager is a desktop companion for users who want a graphical way to work with a CleanYourTV checkout and an Android TV device. The interface is built with **Python + PySide6** and designed using **Qt Designer `.ui` XML files**.
 
 > **Community project:** this application is independent from the CleanYourTV maintainers unless explicitly stated otherwise.
 
-## ✨ Features
+## ✨ Current features
 
 - 📡 Connect to an Android TV device over ADB by IP.
-- 🔍 Inspect manufacturer, model and Android version.
+- 🔍 Inspect manufacturer, model, Android version and ADB state.
 - 📦 Start the local CleanYourTV launcher installation workflow.
-- 🎨 Detect and manage local CleanYourTV themes.
-- 🧩 Detect and manage local CleanYourTV add-ons.
-- 💾 Create a local backup before making changes.
+- 🎨 Inspect the themes available in a local CleanYourTV checkout.
+- 🧩 Inspect the add-ons available in a local CleanYourTV checkout.
+- 💾 Create timestamped local project backups.
 - 📝 Show a visible operation log instead of hiding commands in the background.
-- 🪟 Build a Windows executable with the included build script.
-- 🤖 Build automatically with GitHub Actions.
+- 🛡️ Avoid automatic package disabling and keep potentially destructive actions explicit.
+- 🪟 Build a Windows executable with the included PyInstaller spec and PowerShell script.
+- 🤖 Run linting, tests and Windows packaging in GitHub Actions.
 - 🖌️ Keep the desktop UI editable through Qt Designer XML.
+
+### Planned
+
+- Dedicated theme previews and apply/rollback workflow.
+- Add-on installation/removal with per-add-on documentation checks.
+- Safe package inventory and explicit debloat profiles.
+- One-click backup restore.
+- Better launcher recovery and device reconnect handling.
+- Signed release packages and versioned GitHub Releases.
 
 ## 🖥️ Requirements
 
 - Windows 10 or Windows 11.
 - Python 3.10 or newer.
 - Android SDK Platform-Tools with `adb` available in `PATH`, or an `ADB_PATH` environment variable pointing to `adb.exe`.
-- A local CleanYourTV checkout if you want to use the installer integration.
+- A local CleanYourTV checkout if you want to use the installer, theme and add-on integration.
 - Network ADB enabled and reachable on the TV.
 
-The manager is designed to work with Android TV devices, but compatibility depends on the device firmware and the CleanYourTV features being used.
+Compatibility depends on the device firmware and the CleanYourTV features being used.
 
-## 🚀 Installation
+## 🚀 Installation from source
 
 ### 1. Clone the repository
 
@@ -101,41 +111,27 @@ Then launch the manager normally:
 python app\main.py
 ```
 
-The manager is intended to use the existing CleanYourTV tooling instead of silently reimplementing or replacing upstream scripts.
+The manager uses the existing CleanYourTV tooling instead of silently reimplementing or replacing upstream scripts.
 
-## 🎨 Themes
+## 🎨 Themes and 🧩 add-ons
 
-The **Themes** section is designed to work with the `themes` directory from a CleanYourTV checkout.
+The manager reads the local `themes` and `addons` directories from a CleanYourTV checkout and reports what is available.
 
-A typical structure is:
-
-```text
-CleanYourTV/
-└── themes/
-    ├── aurora/
-    ├── glass/
-    ├── retro/
-    └── ...
-```
-
-The manager can inspect the available theme directories. Applying a theme should remain an explicit user action.
-
-## 🧩 Add-ons
-
-The **Add-ons** section is designed around the add-on directories provided by CleanYourTV.
-
-A typical structure is:
+Typical structure:
 
 ```text
 CleanYourTV/
+├── themes/
+│   ├── aurora/
+│   ├── glass/
+│   └── ...
 └── addons/
     ├── tv-hub/
     ├── capacity-stats/
-    ├── weather/
     └── ...
 ```
 
-Add-ons may have their own requirements. The manager should not pretend that an add-on is compatible with every television without checking its documentation.
+The current release does **not** silently install or modify a theme or add-on. Applying and installing these components is deliberately kept explicit while compatibility and rollback handling are developed.
 
 ## 🛡️ Safety
 
@@ -144,7 +140,7 @@ This project is intended to make potentially destructive TV modifications easier
 The manager should:
 
 - show the target TV before an operation;
-- display commands or actions in the operation log;
+- display actions in the operation log;
 - request confirmation before potentially disruptive changes;
 - preserve a recovery path where possible;
 - avoid blindly disabling Android system packages;
@@ -164,13 +160,31 @@ To build the application locally:
 .\build.ps1
 ```
 
-The resulting files are placed under:
+The resulting executable is placed under:
 
 ```text
-dist\
+dist\CleanYourTV-Manager.exe
 ```
 
-GitHub Actions can also build the Windows application from the repository workflow.
+The PyInstaller specification explicitly includes the Qt `.ui` files so the packaged application does not depend on the source checkout for its interface.
+
+GitHub Actions runs linting, tests and the Windows build on pushes and pull requests.
+
+## 🧪 Development checks
+
+Install development dependencies:
+
+```powershell
+pip install -r requirements-dev.txt
+```
+
+Run:
+
+```powershell
+ruff check app tests
+pytest
+python -m compileall -q app tests
+```
 
 ## 🧑‍💻 Qt Designer
 
@@ -187,37 +201,34 @@ You can open it with Qt Designer and change the layout, widgets and text without
 ```text
 CleanYourTV-Manager/
 ├── .github/
+│   ├── ISSUE_TEMPLATE/
 │   └── workflows/
 │       └── build-windows.yml
 ├── app/
+│   ├── core/
+│   │   ├── adb.py
+│   │   ├── backup.py
+│   │   ├── clean_your_tv.py
+│   │   └── paths.py
 │   ├── main.py
 │   └── ui/
 │       └── MainWindow.ui
+├── tests/
+├── CleanYourTV-Manager.spec
 ├── build.ps1
+├── CHANGELOG.md
+├── CONTRIBUTING.md
 ├── LICENSE
 ├── README.md
-└── requirements.txt
+├── SECURITY.md
+├── pyproject.toml
+├── requirements.txt
+└── requirements-dev.txt
 ```
-
-## 🧪 Development status
-
-This is an active community project. Some manager functions are currently scaffolding and should be considered experimental until tested against real Android TV hardware.
-
-Before publishing a stable release, test at least:
-
-- ADB connection and reconnect behavior;
-- device detection;
-- CleanYourTV installation workflow;
-- theme application and rollback;
-- add-on installation and removal;
-- backup and restore;
-- failure handling when the TV disconnects;
-- launcher recovery;
-- preservation of Live TV / tuner services.
 
 ## 🤝 Contributing
 
-Pull requests and issue reports are welcome.
+Pull requests and issue reports are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 When reporting a device-specific problem, include:
 
@@ -229,6 +240,10 @@ When reporting a device-specific problem, include:
 - the exact operation that failed.
 
 Do not publish passwords, private keys, ADB credentials or other sensitive information in an issue.
+
+## 🔐 Security
+
+See [SECURITY.md](SECURITY.md) for responsible vulnerability reporting.
 
 ## 🔗 Links
 
