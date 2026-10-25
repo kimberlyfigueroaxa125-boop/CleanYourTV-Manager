@@ -6,6 +6,11 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing GitHub Release tag to attach the EXE to (optional)"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -16,6 +21,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -68,11 +76,11 @@ jobs:
           path: dist/CleanYourTV-Manager.exe
           if-no-files-found: error
 
-      - name: Attach EXE to matching GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Attach EXE to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ github.ref_name }}
+          TAG_NAME: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.release_tag }}
         shell: pwsh
         run: |
           gh release upload $env:TAG_NAME dist/CleanYourTV-Manager.exe --clobber
