@@ -8,6 +8,7 @@ from PySide6.QtCore import QFile
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
+    QButtonGroup,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -64,6 +65,15 @@ def main() -> int:
         ip_edit = window.findChild(QLineEdit, "tvIp")
         if not all((stack, log, status, title, ip_edit)):
             raise RuntimeError("В MainWindow.ui отсутствует обязательный элемент управления.")
+
+        # Resolve pages once. setCurrentWidget() is more robust than relying on
+        # a page index and also makes the navigation code independent of UI order.
+        pages: dict[str, QWidget] = {}
+        for button_name, (_, page_name) in PAGES.items():
+            page = window.findChild(QWidget, page_name)
+            if page is None:
+                raise RuntimeError(f"В MainWindow.ui не найдена страница: {page_name}")
+            pages[button_name] = page
     except Exception as exc:
         QMessageBox.critical(None, "CleanYourTV Manager", str(exc))
         return 1
@@ -98,22 +108,20 @@ def main() -> int:
 
     def navigate(button_name: str) -> None:
         page_info = PAGES.get(button_name)
-        if page_info is None:
+        page = pages.get(button_name)
+        if page_info is None or page is None:
+            write_log(f"> Navigation error: unknown page key: {button_name}")
             return
-        label, page_name = page_info
-        index = next(
-            (i for i in range(stack.count()) if stack.widget(i).objectName() == page_name),
-            -1,
-        )
-        if index < 0:
-            write_log(f"> Navigation error: page not found in page stack: {page_name}")
-            return
-        stack.setCurrentIndex(index)
+
+        label, _ = page_info
+        stack.setCurrentWidget(page)
         title.setText(label)
+
         for name in PAGES:
             nav_button = window.findChild(QPushButton, name)
             if nav_button is not None:
                 nav_button.setChecked(name == button_name)
+
         write_log(f"> Opened page: {label}")
 
     def connect_tv() -> None:
@@ -273,8 +281,13 @@ def main() -> int:
         delete_button.clicked.connect(accept_delete)
         dialog.exec()
 
+    # Use a real exclusive button group so exactly one sidebar page is selected.
+    nav_group = QButtonGroup(window)
+    nav_group.setExclusive(True)
     for name in PAGES:
-        button(name).clicked.connect(lambda checked=False, key=name: navigate(key))
+        nav_button = button(name)
+        nav_group.addButton(nav_button)
+        nav_button.clicked.connect(lambda checked=False, key=name: navigate(key))
 
     button("connectButton").clicked.connect(connect_tv)
     button("checkButton").clicked.connect(check_tv)
@@ -296,6 +309,9 @@ def main() -> int:
     write_log("> Unofficial community GUI; upstream CleanYourTV remains separate.")
     write_log("> Sidebar navigation is connected to actual stacked pages.")
     write_log("> No Android package is disabled automatically.")
+
+    # Explicitly select the first page on startup.
+    navigate("homeButton")
 
     window.show()
     return app.exec()
