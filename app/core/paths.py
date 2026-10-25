@@ -43,6 +43,7 @@ def find_cleanyourtv() -> Path | None:
             APP_ROOT.parent / "CleanYourTV",
             Path.home() / "CleanYourTV",
             Path.home() / "test" / "CleanYourTV",
+            Path.home() / "test" / "CleanYourTV-Manager" / "CleanYourTV",
         ]
     )
 
