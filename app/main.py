@@ -93,11 +93,7 @@ def main() -> int:
         root = find_cleanyourtv()
         if root is None:
             if show_warning:
-                QMessageBox.warning(
-                    window,
-                    "CleanYourTV",
-                    "Локальная папка CleanYourTV не найдена. Задайте CLEANYOURTV_ROOT.",
-                )
+                QMessageBox.warning(window, "CleanYourTV", "Локальная папка CleanYourTV не найдена. Задайте CLEANYOURTV_ROOT.")
             return None
         return LocalProject(root)
 
@@ -178,11 +174,9 @@ def main() -> int:
             QMessageBox.warning(window, "CleanYourTV", f"Не найден установщик:\n{script}")
             return
         answer = QMessageBox.question(
-            window,
-            "Запустить установщик",
+            window, "Запустить установщик",
             "Откроется отдельное окно PowerShell с локальным установщиком CleanYourTV. Продолжить?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
         )
         if answer != QMessageBox.Yes:
             return
@@ -221,11 +215,7 @@ def main() -> int:
         existing = next((item for item in script_candidates if item.is_file()), None)
         if existing:
             write_log(f"> Theme tool found: {existing}")
-            QMessageBox.information(
-                window,
-                "Применение темы",
-                f"Найден инструмент:\n{existing}\n\nПроверьте его параметры и примените тему согласно документации CleanYourTV.",
-            )
+            QMessageBox.information(window, "Применение темы", f"Найден инструмент:\n{existing}\n\nПроверьте его параметры и примените тему согласно документации CleanYourTV.")
         else:
             QMessageBox.information(window, "Применение темы", f"Откройте документацию по темам:\n{docs}")
 
@@ -273,7 +263,6 @@ def main() -> int:
         if not all((device_label, confirm, test_only, run_button, cancel_button)):
             QMessageBox.critical(window, "Удаление CleanYourTV с ТВ", "В окне подтверждения отсутствуют нужные элементы.")
             return
-
         device_label.setText(f"Устройство: {info.manufacturer} {info.model} | {client.serial}")
 
         def update_button() -> None:
@@ -286,22 +275,24 @@ def main() -> int:
 
         def run_uninstall() -> None:
             try:
-                report = uninstall_cleanyourtv_from_tv(client, confirmed=bool(confirm.isChecked()))
+                report = uninstall_cleanyourtv_from_tv(
+                    client,
+                    confirmed=bool(confirm.isChecked()),
+                    dry_run=bool(test_only.isChecked()),
+                )
                 for message in report.messages:
                     write_log(f"> TV uninstall: {message}")
                 if not report.launcher_present:
                     QMessageBox.information(window, "CleanYourTV", "Пакет CleanYourTV не найден на телевизоре.")
                 elif test_only.isChecked():
                     QMessageBox.information(
-                        window,
-                        "Проверка готовности",
-                        "Проверка завершена. Стандартный Home подтверждён; пакет CleanYourTV не удалялся.\n\n"
+                        window, "Проверка готовности",
+                        "Проверка завершена. В тестовом режиме настройки телевизора не меняются, пакет не удаляется.\n\n"
                         + "\n".join(report.messages),
                     )
                 elif report.removed:
                     QMessageBox.information(
-                        window,
-                        "CleanYourTV удалён",
+                        window, "CleanYourTV удалён",
                         "Google TV Launcher восстановлен, а CleanYourTV удалён с ТВ для пользователя 0.\n\n"
                         + "\n".join(report.messages),
                     )
@@ -311,8 +302,7 @@ def main() -> int:
             except (TvUninstallError, AdbError, OSError, ValueError) as exc:
                 write_log(f"> TV UNINSTALL ERROR: {exc}")
                 QMessageBox.critical(
-                    window,
-                    "Удаление CleanYourTV с ТВ",
+                    window, "Удаление CleanYourTV с ТВ",
                     f"{exc}\n\nУдаление останавливается при любой ошибке проверки Home.",
                 )
 
@@ -346,7 +336,7 @@ def main() -> int:
 
         def accept_delete() -> None:
             try:
-                removed = uninstall_local_project(current.root, confirmed=confirm.isChecked())
+                removed = uninstall_local_project(current.root, confirmed=bool(confirm.isChecked()))
                 write_log(f"> Local project removed: {removed}")
                 dialog.accept()
                 button("deleteCleanButton").setEnabled(False)
@@ -384,8 +374,7 @@ def main() -> int:
     refresh_backups()
     write_log("> CleanYourTV Manager started")
     write_log("> Unofficial community GUI; upstream CleanYourTV remains separate.")
-    write_log("> TV uninstall restores and verifies stock Home first.")
-    write_log("> No TV package is removed without an explicit confirmation.")
+    write_log("> TV uninstall dry-run is read-only; destructive mode requires confirmation.")
     navigate("homeButton")
 
     window.show()
