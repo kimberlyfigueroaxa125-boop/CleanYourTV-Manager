@@ -7,8 +7,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="rootLayout">
     <property name="spacing"><number>0</number></property>
-    <item>
-     <widget class="QFrame" name="sidebar">
+    <item><widget class="QFrame" name="sidebar">
       <property name="minimumSize"><size><width>220</width><height>0</height></size></property>
       <property name="styleSheet"><string notr="true">QFrame#sidebar{background:#10141c;} QPushButton{color:#dbe4f0;background:transparent;border:0;padding:13px;text-align:left;font-size:14px;border-radius:8px;} QPushButton:hover{background:#1b2533;} QPushButton:checked{background:#243449;color:#ffffff;}</string></property>
       <layout class="QVBoxLayout" name="sideLayout">
@@ -23,20 +22,17 @@
        <item><widget class="QPushButton" name="backupButton"><property name="text"><string>▣  Резервная копия</string></property></widget></item>
        <item><widget class="QPushButton" name="settingsButton"><property name="text"><string>⚙  Настройки</string></property></widget></item>
       </layout>
-     </widget>
-    </item>
-    <item>
-     <widget class="QWidget" name="content">
-      <property name="styleSheet"><string>QWidget#content{background:#080b10;} QLabel{color:#e9eef5;} QLineEdit,QPlainTextEdit,QListWidget{background:#111720;color:#e9eef5;border:1px solid #263142;border-radius:7px;padding:7px;} QPushButton.action{background:#1d6fe8;color:white;border:0;border-radius:7px;padding:10px 16px;} QFrame.card{background:#0f151e;border:1px solid #263142;border-radius:10px;}</string></property>
+     </widget></item>
+    <item><widget class="QWidget" name="content">
+      <property name="styleSheet"><string>QWidget#content{background:#080b10;} QLabel{color:#e9eef5;} QLineEdit,QPlainTextEdit,QListWidget{background:#111720;color:#e9eef5;border:1px solid #263142;border-radius:7px;padding:7px;} QPushButton.action{background:#1d6fe8;color:white;border:0;border-radius:7px;padding:10px 16px;} QPushButton.danger{background:#b83232;color:white;border:0;border-radius:7px;padding:10px 16px;} QFrame.card{background:#0f151e;border:1px solid #263142;border-radius:10px;}</string></property>
       <layout class="QVBoxLayout" name="contentLayout">
        <item><layout class="QHBoxLayout" name="headerLayout"><item><widget class="QLabel" name="title"><property name="text"><string>CleanYourTV Manager</string></property><property name="styleSheet"><string>font-size:28px;font-weight:700;</string></property></widget></item><item><spacer name="headerSpacer"><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item><item><widget class="QLabel" name="tvStatus"><property name="text"><string>●  TV не подключён</string></property><property name="styleSheet"><string>color:#f0b44d;font-weight:600;</string></property></widget></item></layout></item>
        <item><widget class="QGroupBox" name="connectionGroup"><property name="title"><string>Телевизор</string></property><layout class="QHBoxLayout" name="connectionLayout"><item><widget class="QLineEdit" name="tvIp"><property name="placeholderText"><string>192.168.0.118</string></property></widget></item><item><widget class="QPushButton" name="connectButton"><property name="text"><string>Подключить</string></property><property name="styleSheet"><string>background:#1d6fe8;color:white;border:0;border-radius:7px;padding:9px 16px;</string></property></widget></item><item><widget class="QPushButton" name="checkButton"><property name="text"><string>Проверить</string></property></widget></item></layout></widget></item>
-       <item><widget class="QGroupBox" name="quickGroup"><property name="title"><string>Быстрые действия</string></property><layout class="QGridLayout" name="quickLayout"><item row="0" column="0"><widget class="QPushButton" name="installCleanButton"><property name="text"><string>📦  Установить / обновить CleanYourTV</string></property><property name="class"><string notr="true">action</string></property></widget></item><item row="0" column="1"><widget class="QPushButton" name="themesQuickButton"><property name="text"><string>✦  Темы</string></property><property name="class"><string notr="true">action</string></property></widget></item><item row="1" column="0"><widget class="QPushButton" name="addonsQuickButton"><property name="text"><string>◇  Аддоны</string></property><property name="class"><string notr="true">action</string></property></widget></item><item row="1" column="1"><widget class="QPushButton" name="backupQuickButton"><property name="text"><string>▣  Резервная копия</string></property></widget></item></layout></widget></item>
+       <item><widget class="QGroupBox" name="quickGroup"><property name="title"><string>Быстрые действия</string></property><layout class="QGridLayout" name="quickLayout"><item row="0" column="0"><widget class="QPushButton" name="installCleanButton"><property name="text"><string>📦  Установить / обновить CleanYourTV</string></property><property name="class"><string notr="true">action</string></property></widget></item><item row="0" column="1"><widget class="QPushButton" name="themesQuickButton"><property name="text"><string>✦  Темы</string></property><property name="class"><string notr="true">action</string></property></widget></item><item row="1" column="0"><widget class="QPushButton" name="addonsQuickButton"><property name="text"><string>◇  Аддоны</string></property><property name="class"><string notr="true">action</string></property></widget></item><item row="1" column="1"><widget class="QPushButton" name="backupQuickButton"><property name="text"><string>▣  Резервная копия</string></property></widget></item><item row="2" column="0" colspan="2"><widget class="QPushButton" name="deleteCleanButton"><property name="text"><string>🗑  Удалить CleanYourTV</string></property><property name="class"><string notr="true">danger</string></property></widget></item></layout></widget></item>
        <item><widget class="QGroupBox" name="logGroup"><property name="title"><string>Журнал</string></property><layout class="QVBoxLayout" name="logLayout"><item><widget class="QPlainTextEdit" name="log"><property name="readOnly"><bool>true</bool></property><property name="placeholderText"><string>Здесь появится журнал операций...</string></property></widget></item></layout></widget></item>
-       <item><widget class="QLabel" name="safetyLabel"><property name="text"><string>Безопасность: менеджер не отключает системные пакеты без явного действия пользователя.</string></property><property name="wordWrap"><bool>true</bool></property><property name="styleSheet"><string>color:#8190a5;padding:4px;</string></property></widget></item>
+       <item><widget class="QLabel" name="safetyLabel"><property name="text"><string>Безопасность: удаление касается только локальной папки CleanYourTV на ПК. Android-пакеты и настройки ТВ не удаляются.</string></property><property name="wordWrap"><bool>true</bool></property><property name="styleSheet"><string>color:#8190a5;padding:4px;</string></property></widget></item>
       </layout>
-     </widget>
-    </item>
+     </widget></item>
    </layout>
   </widget>
  </widget>
