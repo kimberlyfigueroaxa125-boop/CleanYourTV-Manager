@@ -30,6 +30,9 @@ jobs:
       - name: Compile Python files
         run: python -m compileall -q app tests
 
+      - name: Auto-fix Ruff import ordering
+        run: ruff check --select I --fix app tests
+
       - name: Ruff
         run: ruff check app tests
 
