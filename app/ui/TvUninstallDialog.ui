@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TvUninstallDialog</class>
+ <widget class="QDialog" name="TvUninstallDialog">
+  <property name="windowTitle"><string>Удалить CleanYourTV с телевизора</string></property>
+  <property name="minimumSize"><size><width>560</width><height>330</height></size></property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item><widget class="QLabel" name="warningTitle"><property name="text"><string>Удалить CleanYourTV с ТВ?</string></property><property name="styleSheet"><string>font-size: 20px; font-weight: 700;</string></property></widget></item>
+   <item><widget class="QLabel" name="warningText"><property name="wordWrap"><bool>true</bool></property><property name="text"><string>Сначала программа включит стандартный Google TV Launcher, назначит его домашним экраном и проверит результат. Если проверка не пройдёт, CleanYourTV удалён не будет. Будет удалён только пакет CleanYourTV для пользователя 0. Системные пакеты Live TV и TV Input не затрагиваются.</string></property></widget></item>
+   <item><widget class="QLabel" name="deviceLabel"><property name="wordWrap"><bool>true</bool></property><property name="text"><string>Телевизор: —</string></property></widget></item>
+   <item><widget class="QCheckBox" name="confirmCheck"><property name="text"><string>Я понимаю, что CleanYourTV будет удалён с телевизора</string></property></widget></item>
+   <item><widget class="QCheckBox" name="testOnlyCheck"><property name="text"><string>Только проверка (не удалять пакет)</string></property><property name="checked"><bool>true</bool></property></widget></item>
+   <item><spacer name="verticalSpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint"><size><width>20</width><height>20</height></size></property></spacer></item>
+   <item><layout class="QHBoxLayout" name="buttonsLayout">
+    <item><spacer name="horizontalSpacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint"><size><width>40</width><height>20</height></size></property></spacer></item>
+    <item><widget class="QPushButton" name="cancelButton"><property name="text"><string>Отмена</string></property></widget></item>
+    <item><widget class="QPushButton" name="runButton"><property name="text"><string>Проверить готовность</string></property><property name="enabled"><bool>false</bool></property></widget></item>
+   </layout></item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
