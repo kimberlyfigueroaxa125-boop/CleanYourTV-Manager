@@ -101,21 +101,12 @@ def main() -> int:
         if page_info is None:
             return
         label, page_name = page_info
-        page = stack.findChild(QWidget, page_name)
-        if page is None:
-            write_log(f"> Navigation error: page not found: {page_name}")
-            return
-        index = stack.indexOf(page)
+        index = next(
+            (i for i in range(stack.count()) if stack.widget(i).objectName() == page_name),
+            -1,
+        )
         if index < 0:
-            # Qt object lookup can miss pages depending on the loader ownership tree.
-            # Resolve by traversing the stack children and verify the object is a direct page.
-            page = next((child for child in stack.findChildren(QWidget) if child.objectName() == page_name), None)
-            if page is None:
-                write_log(f"> Navigation error: page not in QStackedWidget: {page_name}")
-                return
-            index = stack.indexOf(page)
-        if index < 0:
-            write_log(f"> Navigation error: page not in QStackedWidget: {page_name}")
+            write_log(f"> Navigation error: page not found in page stack: {page_name}")
             return
         stack.setCurrentIndex(index)
         title.setText(label)
