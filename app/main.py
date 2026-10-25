@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QStackedWidget,
+    QWidget,
 )
 from PySide6.QtUiTools import QUiLoader
 
@@ -28,13 +29,13 @@ UI_FILE = APP_ROOT / "app" / "ui" / "MainWindow.ui"
 UNINSTALL_UI_FILE = APP_ROOT / "app" / "ui" / "UninstallDialog.ui"
 
 PAGES = {
-    "homeButton": ("Главная", "homePage", "⌂  Главная"),
-    "installButton": ("Установка", "installPage", "▣  Установка"),
-    "themesButton": ("Темы", "themesPage", "✦  Темы"),
-    "addonsButton": ("Аддоны", "addonsPage", "◇  Аддоны"),
-    "cleanupButton": ("Очистка", "cleanupPage", "♲  Очистка"),
-    "backupButton": ("Резервная копия", "backupPage", "▣  Резервная копия"),
-    "settingsButton": ("Настройки", "settingsPage", "⚙  Настройки"),
+    "homeButton": ("Главная", "homePage"),
+    "installButton": ("Установка", "installPage"),
+    "themesButton": ("Темы", "themesPage"),
+    "addonsButton": ("Аддоны", "addonsPage"),
+    "cleanupButton": ("Очистка", "cleanupPage"),
+    "backupButton": ("Резервная копия", "backupPage"),
+    "settingsButton": ("Настройки", "settingsPage"),
 }
 
 
@@ -56,6 +57,13 @@ def main() -> int:
     app = QApplication(sys.argv)
     try:
         window = load_ui(UI_FILE)
+        stack = window.findChild(QStackedWidget, "pageStack")
+        log = window.findChild(QPlainTextEdit, "log")
+        status = window.findChild(QLabel, "tvStatus")
+        title = window.findChild(QLabel, "title")
+        ip_edit = window.findChild(QLineEdit, "tvIp")
+        if not all((stack, log, status, title, ip_edit)):
+            raise RuntimeError("В MainWindow.ui отсутствует обязательный элемент управления.")
     except Exception as exc:
         QMessageBox.critical(None, "CleanYourTV Manager", str(exc))
         return 1
@@ -65,16 +73,6 @@ def main() -> int:
         if widget is None:
             raise RuntimeError(f"Не найден элемент интерфейса: {name}")
         return widget
-
-    try:
-        log = required(QPlainTextEdit, "log")
-        status = required(QLabel, "tvStatus")
-        title = required(QLabel, "title")
-        ip_edit = required(QLineEdit, "tvIp")
-        stack = required(QStackedWidget, "pageStack")
-    except RuntimeError as exc:
-        QMessageBox.critical(window, "CleanYourTV Manager", str(exc))
-        return 1
 
     def button(name: str) -> QPushButton:
         return required(QPushButton, name)
@@ -89,7 +87,7 @@ def main() -> int:
                 QMessageBox.warning(
                     window,
                     "CleanYourTV",
-                    "Папка CleanYourTV не найдена. Задайте CLEANYOURTV_ROOT или разместите исходный проект рядом с менеджером.",
+                    "Локальная папка CleanYourTV не найдена. Задайте CLEANYOURTV_ROOT в PowerShell.",
                 )
             return None
         return LocalProject(root)
@@ -99,19 +97,17 @@ def main() -> int:
         status.setStyleSheet(f"color:{color};font-weight:600;")
 
     def navigate(button_name: str) -> None:
-        if button_name not in PAGES:
+        page_info = PAGES.get(button_name)
+        if page_info is None:
             return
-        label, page_name, _ = PAGES[button_name]
-        page = window.findChild(type(window), page_name)
-        # The loader creates page widgets as QWidget, not as the main window type.
-        from PySide6.QtWidgets import QWidget
+        label, page_name = page_info
         page = window.findChild(QWidget, page_name)
         if page is None:
             write_log(f"> Navigation error: page not found: {page_name}")
             return
         index = stack.indexOf(page)
         if index < 0:
-            write_log(f"> Navigation error: page not in stack: {page_name}")
+            write_log(f"> Navigation error: page not in QStackedWidget: {page_name}")
             return
         stack.setCurrentIndex(index)
         title.setText(label)
@@ -169,7 +165,7 @@ def main() -> int:
         answer = QMessageBox.question(
             window,
             "Запустить установщик",
-            "Откроется отдельное окно PowerShell с исходным установщиком CleanYourTV. Продолжить?",
+            "Откроется отдельное окно PowerShell с локальным установщиком CleanYourTV. Продолжить?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -190,39 +186,45 @@ def main() -> int:
             target.addItem("Не найдена локальная папка CleanYourTV.")
             return
         items = current.list_directory(kind)
-        if not items:
-            target.addItem("Каталоги не найдены.")
-        else:
-            target.addItems(items)
+        target.addItems(items if items else ["Каталоги не найдены."])
         write_log(f"> Loaded {len(items)} item(s) from {current.root / kind}")
 
     def show_items(kind: str) -> None:
-        target_page = "themesButton" if kind == "themes" else "addonsButton"
-        navigate(target_page)
-        populate_directory(kind, "themesList" if kind == "themes" else "addonsList")
+        if kind == "themes":
+            navigate("themesButton")
+            populate_directory("themes", "themesList")
+        else:
+            navigate("addonsButton")
+            populate_directory("addons", "addonsList")
 
     def apply_theme_help() -> None:
         current = project()
         if current is None:
             return
-        script_candidates = [
-            current.root / "tools" / "theme.ps1",
-            current.root / "tools" / "theme.sh",
-        ]
+        docs = current.root / "themes" / "README.md"
+        script_candidates = [current.root / "tools" / "theme.ps1", current.root / "tools" / "theme.sh"]
         existing = next((item for item in script_candidates if item.is_file()), None)
         if existing:
-            QMessageBox.information(
-                window,
-                "Применение темы",
-                f"Найден инструмент темы:\n{existing}\n\nПроверьте его README/справку и примените тему в соответствии с документацией CleanYourTV.",
-            )
             write_log(f"> Theme tool found: {existing}")
+            QMessageBox.information(window, "Применение темы", f"Найден инструмент:\n{existing}\n\nПроверьте его параметры и примените тему согласно документации CleanYourTV.")
         else:
-            QMessageBox.information(
-                window,
-                "Применение темы",
-                f"Инструмент применения темы не найден автоматически. Откройте документацию в:\n{current.root / 'themes' / 'README.md'}",
-            )
+            QMessageBox.information(window, "Применение темы", f"Откройте документацию по темам:\n{docs}")
+
+    def refresh_backups() -> None:
+        target = window.findChild(QListWidget, "backupsList")
+        if target is None:
+            return
+        target.clear()
+        folder = APP_ROOT / "backups"
+        if not folder.is_dir():
+            target.addItem("Резервных копий пока нет.")
+            return
+        items = sorted(
+            (path for path in folder.iterdir() if path.is_dir()),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+        target.addItems([path.name for path in items] or ["Резервных копий пока нет."])
 
     def backup() -> None:
         current = project()
@@ -232,22 +234,10 @@ def main() -> int:
             destination = create_backup(current.root, APP_ROOT / "backups")
             write_log(f"> Backup created: {destination}")
             refresh_backups()
-            QMessageBox.information(window, "Резервная копия", f"Создана копия проекта:\n{destination}")
+            QMessageBox.information(window, "Резервная копия", f"Создана локальная копия проекта:\n{destination}")
         except (OSError, RuntimeError) as exc:
             write_log(f"> BACKUP ERROR: {exc}")
             QMessageBox.critical(window, "Резервная копия", str(exc))
-
-    def refresh_backups() -> None:
-        target = window.findChild(QListWidget, "backupsList")
-        if target is None:
-            return
-        target.clear()
-        folder = APP_ROOT / "backups"
-        if folder.is_dir():
-            items = sorted((p for p in folder.iterdir() if p.is_dir()), key=lambda p: p.stat().st_mtime, reverse=True)
-            target.addItems([p.name for p in items] or ["Резервных копий пока нет."])
-        else:
-            target.addItem("Резервных копий пока нет.")
 
     def uninstall_clean_your_tv() -> None:
         current = project()
@@ -263,9 +253,8 @@ def main() -> int:
         delete_button = dialog.findChild(QPushButton, "deleteButton")
         cancel_button = dialog.findChild(QPushButton, "cancelButton")
         if not all((path_label, confirm, delete_button, cancel_button)):
-            QMessageBox.critical(window, "Удаление CleanYourTV", "Не удалось загрузить элементы окна удаления.")
+            QMessageBox.critical(window, "Удаление CleanYourTV", "Не удалось загрузить окно подтверждения.")
             return
-
         path_label.setText(f"Путь: {current.root}")
         delete_button.setEnabled(False)
         confirm.toggled.connect(delete_button.setEnabled)
@@ -274,14 +263,10 @@ def main() -> int:
         def accept_delete() -> None:
             try:
                 removed = uninstall_local_project(current.root, confirmed=True)
-                write_log(f"> Local CleanYourTV checkout removed: {removed}")
+                write_log(f"> Local project removed: {removed}")
                 dialog.accept()
                 button("deleteCleanButton").setEnabled(False)
-                QMessageBox.information(
-                    window,
-                    "Локальные файлы удалены",
-                    "Удалена только папка проекта на ПК. Телевизор и Android-пакеты не изменялись.",
-                )
+                QMessageBox.information(window, "Удалено", "Удалена только локальная папка на ПК. Телевизор не изменялся.")
             except (UninstallError, OSError) as exc:
                 write_log(f"> UNINSTALL ERROR: {exc}")
                 QMessageBox.critical(window, "Удаление CleanYourTV", str(exc))
@@ -289,13 +274,7 @@ def main() -> int:
         delete_button.clicked.connect(accept_delete)
         dialog.exec()
 
-    def navigate_by_label(label: str) -> None:
-        for name, (page_label, _, _) in PAGES.items():
-            if page_label == label:
-                navigate(name)
-                return
-
-    for name, (label, _, _) in PAGES.items():
+    for name in PAGES:
         button(name).clicked.connect(lambda checked=False, key=name: navigate(key))
 
     button("connectButton").clicked.connect(connect_tv)
@@ -316,7 +295,7 @@ def main() -> int:
     refresh_backups()
     write_log("> CleanYourTV Manager started")
     write_log("> Unofficial community GUI; upstream CleanYourTV remains separate.")
-    write_log("> Sidebar navigation is connected to real pages.")
+    write_log("> Sidebar navigation is connected to actual stacked pages.")
     write_log("> No Android package is disabled automatically.")
 
     window.show()
