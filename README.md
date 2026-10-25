@@ -11,10 +11,11 @@ CleanYourTV Manager is a desktop companion for users who prefer a graphical inte
 ## Supported environment
 
 - **PC:** Windows 10 or Windows 11. The manager itself runs on the PC, not on the TV.
-- **TV:** Android TV or a compatible Android-based TV device that supports ADB. Exact compatibility depends on the manufacturer, firmware, and launcher setup.
+- **TV platform:** Android TV or a compatible Android-based TV device with ADB support.
+- **Verified TV configuration:** Android TV running Android 11, connected through ADB. This is the only TV/Android version configuration confirmed by the author so far; the TV brand and model are not listed here.
 - **Connection:** USB debugging or Wireless debugging must be enabled on the TV, and the PC must be authorized when prompted.
 - **TV-side operations:** ADB commands and upstream CleanYourTV tools/apps run on or communicate with the TV. Theme installation uses the upstream `tools/theme.ps1` script. Add-ons are Android apps built on the PC and installed to the TV.
-- **Compatibility note:** The project has not been certified against every Android TV model. Review each operation and test on the intended device before relying on it.
+- **Compatibility note:** Other Android TV devices and Android versions may work, but they have not been tested by the author. Compatibility depends on the manufacturer, model, firmware, and launcher setup. Review each operation and test on the intended device before relying on it.
 
 ## v1.0.0
 
