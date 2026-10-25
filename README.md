@@ -8,7 +8,9 @@ CleanYourTV Manager is a desktop companion for users who prefer a graphical inte
 
 **Independent community project. It is not an official CleanYourTV application.**
 
-## Features
+## v1.0.0
+
+The first release candidate of CleanYourTV Manager brings the core Windows GUI workflow together:
 
 - ADB connection and TV diagnostics.
 - English GUI for Home, Install, Themes, Add-ons, Cleanup, Backups and Settings.
@@ -24,7 +26,7 @@ CleanYourTV Manager is a desktop companion for users who prefer a graphical inte
 - TV removal restores and verifies the stock launcher before attempting to remove `com.gathin.tvhome` for Android user 0.
 - Visible operation log and confirmation prompts.
 
-> **Development status:** theme and add-on installation are implemented in the `feature/tv-uninstall` branch. Cleanup does not perform mass package disabling.
+> **Release status:** v1.0.0 is intended as a community preview. Test it on the target TV before relying on it. Android TV firmware differs between manufacturers and models.
 
 ## Requirements
 
@@ -40,7 +42,7 @@ TV compatibility depends on the model and firmware. Test on the actual target de
 ## Quick start
 
 ```powershell
-git clone -b feature/tv-uninstall https://github.com/kimberlyfigueroaxa125-boop/CleanYourTV-Manager.git
+git clone https://github.com/kimberlyfigueroaxa125-boop/CleanYourTV-Manager.git
 cd CleanYourTV-Manager
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -87,7 +89,7 @@ The manager does not invent or rewrite theme configuration keys. The selected th
 4. Click **Build & Install Selected Add-on**.
 5. Confirm the operation.
 
-The manager first looks for an existing APK under `app/build/outputs/apk`. If none is available, it runs the add-on's Gradle wrapper with `assembleRelease`. It then installs the resulting APK with ADB using `adb install -r`.
+The manager first looks for an existing APK under `app/build/outputs/apk`. If none is available, it runs the add-on's Gradle wrapper with `assembleRelease`. It then installs the resulting APK to the connected TV with ADB using `adb install -r`.
 
 This matches the upstream add-on model: add-ons are independent Android TV apps with their own Gradle projects. The upstream project documents building an add-on with JDK 17 / Android SDK 34 and then installing its release APK to the TV.
 
@@ -130,7 +132,9 @@ Build locally:
 .\build.ps1
 ```
 
-GitHub Actions runs lint/tests and builds a Windows executable. Open the [Actions tab](https://github.com/kimberlyfigueroaxa125-boop/CleanYourTV-Manager/actions), select a successful run and download `CleanYourTV-Manager-Windows`. Until a version is published under Releases, CI artifacts are development builds, not stable releases.
+GitHub Actions runs lint/tests and builds a Windows executable. Open the [Actions tab](https://github.com/kimberlyfigueroaxa125-boop/CleanYourTV-Manager/actions), select a successful run and download `CleanYourTV-Manager-Windows`.
+
+For v1.0.0, the recommended first test is the source-based launch with `python -m app.main`. CI artifacts are development builds unless attached to the GitHub Release.
 
 ## Tests
 
