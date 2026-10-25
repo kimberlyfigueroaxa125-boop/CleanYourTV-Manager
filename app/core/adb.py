@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import subprocess
+from dataclasses import dataclass
 
 from .paths import find_adb
 
@@ -36,6 +36,7 @@ class AdbClient:
         try:
             return subprocess.run(
                 [self.adb, "-s", self.serial, *args],
+                check=False,
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
@@ -48,6 +49,7 @@ class AdbClient:
     def connect(self) -> str:
         result = subprocess.run(
             [self.adb, "connect", self.serial],
+            check=False,
             capture_output=True,
             text=True,
             encoding="utf-8",
