@@ -1,12 +1,20 @@
 # CleanYourTV Manager
 
-> Unofficial community Windows GUI for managing [CleanYourTV](https://github.com/Gathin23/cleanyourtv) on Android TV.
+> **Unofficial community project.** CleanYourTV Manager is not developed, maintained, or endorsed by the CleanYourTV project unless its maintainers explicitly say so. It is a Windows desktop GUI that runs on Windows 10/11 and manages CleanYourTV on compatible Android TV / Android-based TV devices through Android Debug Bridge (ADB).
 
 [![Windows CI](https://github.com/kimberlyfigueroaxa125-boop/CleanYourTV-Manager/actions/workflows/build-windows.yml/badge.svg)](https://github.com/kimberlyfigueroaxa125-boop/CleanYourTV-Manager/actions/workflows/build-windows.yml)
 
 CleanYourTV Manager is a desktop companion for users who prefer a graphical interface. The UI is built with **Python + PySide6** and defined in **Qt Designer `.ui` XML** files.
 
 **Independent community project. It is not an official CleanYourTV application.**
+
+## Supported environment
+
+- **PC:** Windows 10 or Windows 11. The manager itself runs on the PC, not on the TV.
+- **TV:** Android TV or a compatible Android-based TV device that supports ADB. Exact compatibility depends on the manufacturer, firmware, and launcher setup.
+- **Connection:** USB debugging or Wireless debugging must be enabled on the TV, and the PC must be authorized when prompted.
+- **TV-side operations:** ADB commands and upstream CleanYourTV tools/apps run on or communicate with the TV. Theme installation uses the upstream `tools/theme.ps1` script. Add-ons are Android apps built on the PC and installed to the TV.
+- **Compatibility note:** The project has not been certified against every Android TV model. Review each operation and test on the intended device before relying on it.
 
 ## v1.0.0
 
@@ -51,7 +59,7 @@ pip install -r requirements.txt
 python -m app.main
 ```
 
-You can instead run `.\run.ps1` to create the environment when needed.
+You can instead run ` .\run.ps1` to create the environment when needed.
 
 ## Configuration
 
