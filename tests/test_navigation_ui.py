@@ -1,8 +1,9 @@
-from pathlib import Path
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 UI = ROOT / "app" / "ui" / "MainWindow.ui"
+TV_UNINSTALL_UI = ROOT / "app" / "ui" / "TvUninstallDialog.ui"
 
 
 def test_main_window_xml_is_well_formed():
@@ -41,5 +42,15 @@ def test_pages_contain_expected_controls():
         "createBackupButton",
         "backupsList",
         "deleteCleanButton",
+        "deleteCleanFromTvButton",
     ):
         assert control in names
+
+
+def test_tv_uninstall_dialog_defaults_to_read_only_dry_run():
+    root = ET.parse(TV_UNINSTALL_UI).getroot()
+    widgets = {node.attrib.get("name"): node for node in root.iter("widget")}
+    assert "confirmCheck" in widgets
+    assert "testOnlyCheck" in widgets
+    checked = widgets["testOnlyCheck"].find("./property[@name='checked']/bool")
+    assert checked is not None and checked.text == "true"
