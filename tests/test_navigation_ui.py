@@ -47,10 +47,10 @@ def test_pages_contain_expected_controls():
         assert control in names
 
 
-def test_tv_uninstall_dialog_defaults_to_read_only_dry_run():
+def test_tv_uninstall_dialog_requires_confirmation_and_has_no_dry_run_checkbox():
     root = ET.parse(TV_UNINSTALL_UI).getroot()
     widgets = {node.attrib.get("name"): node for node in root.iter("widget")}
     assert "confirmCheck" in widgets
-    assert "testOnlyCheck" in widgets
-    checked = widgets["testOnlyCheck"].find("./property[@name='checked']/bool")
-    assert checked is not None and checked.text == "true"
+    assert "runButton" in widgets
+    assert "cancelButton" in widgets
+    assert "testOnlyCheck" not in widgets
