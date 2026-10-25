@@ -12,6 +12,7 @@ a = Analysis(
     datas=[
         (str(root / "app" / "ui" / "MainWindow.ui"), "app/ui"),
         (str(root / "app" / "ui" / "UninstallDialog.ui"), "app/ui"),
+        (str(root / "app" / "ui" / "TvUninstallDialog.ui"), "app/ui"),
     ],
     hiddenimports=hiddenimports,
     hookspath=[],
