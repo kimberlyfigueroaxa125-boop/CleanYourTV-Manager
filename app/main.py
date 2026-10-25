@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QFile
+from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -20,7 +21,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtUiTools import QUiLoader
 
 from app.core.adb import AdbClient, AdbError
 from app.core.addons import AddonError, AddonInfo, discover_addons, install_addon
