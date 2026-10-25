@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible problem
+labels: [bug]
+body:
+  - type: input
+    id: model
+    attributes:
+      label: TV model
+      placeholder: Hyundai H-LED32BS5002
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android / firmware version
+  - type: input
+    id: manager
+    attributes:
+      label: Manager version or commit
+    validations:
+      required: true
+  - type: input
+    id: cleanyourtv
+    attributes:
+      label: CleanYourTV version or commit
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Remove passwords, tokens, IPs and other private information before posting.
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
