@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import sys
-from pathlib import Path
 
 from PySide6.QtCore import QFile
 from PySide6.QtUiTools import QUiLoader
@@ -132,7 +131,7 @@ def main() -> int:
             write_log(f"> BACKUP ERROR: {exc}")
             QMessageBox.critical(window, "Резервная копия", str(exc))
 
-    def navigate(name: str, label: str) -> None:
+    def navigate(label: str) -> None:
         if title is not None:
             title.setText(label)
         write_log(f"> Opened: {label}")
@@ -154,7 +153,7 @@ def main() -> int:
         "settingsButton": "Настройки",
     }
     for name, label in navigation.items():
-        button(name).clicked.connect(lambda checked=False, n=name, l=label: navigate(n, l))
+        button(name).clicked.connect(lambda checked=False, l=label: navigate(l))
 
     ip_edit.setText(os.environ.get("TV_HOST", ""))
     write_log("> CleanYourTV Manager started")
