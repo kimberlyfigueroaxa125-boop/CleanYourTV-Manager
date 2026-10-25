@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QFile
-from PySide6.QtUiTools import QUiLoader
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -19,11 +18,14 @@ from PySide6.QtWidgets import (
     QStackedWidget,
     QWidget,
 )
+from PySide6.QtUiTools import QUiLoader
 
 from app.core.adb import AdbClient, AdbError
+from app.core.addons import AddonError, AddonInfo, discover_addons, install_addon
 from app.core.backup import create_backup
 from app.core.clean_your_tv import LocalProject
 from app.core.paths import APP_ROOT, find_cleanyourtv
+from app.core.themes import ThemeError, ThemeInfo, discover_themes, install_theme, reset_theme
 from app.core.tv_uninstaller import TvUninstallError, uninstall_cleanyourtv_from_tv
 from app.core.uninstaller import UninstallError, uninstall_local_project
 
@@ -103,7 +105,6 @@ def main() -> int:
 
     def navigate(key: str) -> None:
         if key not in PAGES or key not in pages:
-            write_log(f"> Navigation error: {key}")
             return
         label, _ = PAGES[key]
         stack.setCurrentWidget(pages[key])
@@ -118,7 +119,7 @@ def main() -> int:
         host = ip_edit.text().strip()
         if not host:
             if show_warning:
-                QMessageBox.warning(window, "TV IP address", "Enter the TV IP address on the Home page.")
+                QMessageBox.warning(window, "TV IP Address", "Enter the TV IP address on the Home page.")
             return None
         try:
             client = AdbClient(host)
@@ -173,13 +174,7 @@ def main() -> int:
         if not script.is_file():
             QMessageBox.warning(window, "CleanYourTV", f"Installer not found:\n{script}")
             return
-        answer = QMessageBox.question(
-            window,
-            "Launch Installer",
-            "A separate PowerShell window will open with the local CleanYourTV installer. Continue?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
+        answer = QMessageBox.question(window, "Launch Installer", "A separate PowerShell window will open with the local CleanYourTV installer. Continue?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if answer != QMessageBox.Yes:
             return
         try:
@@ -189,37 +184,117 @@ def main() -> int:
             write_log(f"> INSTALL ERROR: {exc}")
             QMessageBox.critical(window, "CleanYourTV Installation", str(exc))
 
-    def populate_directory(kind: str, list_name: str) -> None:
-        target = required(QListWidget, list_name)
+    def populate_themes() -> list[ThemeInfo]:
+        target = required(QListWidget, "themesList")
         target.clear()
         current = project()
         if current is None:
             target.addItem("Local CleanYourTV folder was not found.")
-            return
-        items = current.list_directory(kind)
-        target.addItems(items or ["No directories found."])
-        write_log(f"> Loaded {len(items)} item(s) from {current.root / kind}")
+            return []
+        items = discover_themes(current)
+        for item in items:
+            target.addItem(item.name)
+        if not items:
+            target.addItem("No installable themes found.")
+        write_log(f"> Found {len(items)} installable theme(s).")
+        return items
 
-    def show_items(kind: str) -> None:
-        if kind == "themes":
-            navigate("themesButton")
-            populate_directory("themes", "themesList")
-        else:
-            navigate("addonsButton")
-            populate_directory("addons", "addonsList")
+    def populate_addons() -> list[AddonInfo]:
+        target = required(QListWidget, "addonsList")
+        target.clear()
+        current = project()
+        if current is None:
+            target.addItem("Local CleanYourTV folder was not found.")
+            return []
+        items = discover_addons(current)
+        for item in items:
+            target.addItem(item.name)
+        if not items:
+            target.addItem("No buildable add-ons found.")
+        write_log(f"> Found {len(items)} buildable add-on(s).")
+        return items
 
-    def apply_theme_help() -> None:
+    def selected_theme() -> ThemeInfo | None:
+        current = project(False)
+        if current is None:
+            return None
+        name = required(QListWidget, "themesList").currentItem()
+        if name is None:
+            return None
+        return next((item for item in discover_themes(current) if item.name == name.text()), None)
+
+    def selected_addon() -> AddonInfo | None:
+        current = project(False)
+        if current is None:
+            return None
+        item = required(QListWidget, "addonsList").currentItem()
+        if item is None:
+            return None
+        return next((addon for addon in discover_addons(current) if addon.name == item.text()), None)
+
+    def apply_selected_theme() -> None:
         current = project()
         if current is None:
             return
-        docs = current.root / "themes" / "README.md"
-        script_candidates = [current.root / "tools" / "theme.ps1", current.root / "tools" / "theme.sh"]
-        existing = next((item for item in script_candidates if item.is_file()), None)
-        if existing:
-            write_log(f"> Theme tool found: {existing}")
-            QMessageBox.information(window, "Apply Theme", f"Tool found:\n{existing}\n\nCheck its parameters and follow the CleanYourTV documentation.")
-        else:
-            QMessageBox.information(window, "Apply Theme", f"Open the theme documentation:\n{docs}")
+        theme = selected_theme()
+        if theme is None:
+            QMessageBox.warning(window, "Install Theme", "Select a theme first.")
+            return
+        host = ip_edit.text().strip()
+        if not host:
+            QMessageBox.warning(window, "Install Theme", "Enter the TV IP address first.")
+            return
+        answer = QMessageBox.question(window, "Install Theme", f"Install theme '{theme.name}' on the connected TV?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if answer != QMessageBox.Yes:
+            return
+        try:
+            write_log(f"> Installing theme: {theme.name}")
+            output = install_theme(current, theme, host)
+            write_log(output)
+            QMessageBox.information(window, "Theme Installed", f"Theme '{theme.name}' was installed and Home was restarted.")
+        except (ThemeError, OSError) as exc:
+            write_log(f"> THEME ERROR: {exc}")
+            QMessageBox.critical(window, "Theme Installation Failed", str(exc))
+
+    def reset_theme_on_tv() -> None:
+        current = project()
+        if current is None:
+            return
+        host = ip_edit.text().strip()
+        if not host:
+            QMessageBox.warning(window, "Reset Theme", "Enter the TV IP address first.")
+            return
+        answer = QMessageBox.question(window, "Reset Theme", "Restore the built-in CleanYourTV theme on the TV?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if answer != QMessageBox.Yes:
+            return
+        try:
+            output = reset_theme(current, host)
+            write_log(output)
+            QMessageBox.information(window, "Theme Reset", "The built-in theme has been restored.")
+        except (ThemeError, OSError) as exc:
+            write_log(f"> THEME RESET ERROR: {exc}")
+            QMessageBox.critical(window, "Theme Reset Failed", str(exc))
+
+    def install_selected_addon() -> None:
+        addon = selected_addon()
+        if addon is None:
+            QMessageBox.warning(window, "Install Add-on", "Select an add-on first.")
+            return
+        client = adb_client()
+        if client is None:
+            return
+        answer = QMessageBox.question(window, "Install Add-on", f"Build and install '{addon.name}' on the connected TV?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if answer != QMessageBox.Yes:
+            return
+        try:
+            write_log(f"> Building/installing add-on: {addon.name}")
+            apk, output = install_addon(client, addon)
+            write_log(f"> APK: {apk}")
+            write_log(output)
+            QMessageBox.information(window, "Add-on Installed", f"'{addon.name}' was installed successfully.\n\nAPK: {apk}")
+        except (AddonError, AdbError, OSError, ValueError) as exc:
+            write_log(f"> ADD-ON ERROR: {exc}")
+            QMessageBox.critical(window, "Add-on Installation Failed", str(exc))
 
     def refresh_backups() -> None:
         target = window.findChild(QListWidget, "backupsList")
@@ -256,7 +331,6 @@ def main() -> int:
         except (OSError, RuntimeError, AdbError, ValueError) as exc:
             QMessageBox.critical(window, "Remove CleanYourTV from TV", str(exc))
             return
-
         device_label = dialog.findChild(QLabel, "deviceLabel")
         confirm = dialog.findChild(QCheckBox, "confirmCheck")
         run_button = dialog.findChild(QPushButton, "runButton")
@@ -264,7 +338,6 @@ def main() -> int:
         if not all((device_label, confirm, run_button, cancel_button)):
             QMessageBox.critical(window, "Remove CleanYourTV from TV", "The confirmation dialog is missing required controls.")
             return
-
         device_label.setText(f"Device: {info.manufacturer} {info.model} | {client.serial}")
         run_button.setEnabled(confirm.isChecked())
         confirm.toggled.connect(run_button.setEnabled)
@@ -280,22 +353,13 @@ def main() -> int:
                 if not report.launcher_present:
                     QMessageBox.information(window, "CleanYourTV", "CleanYourTV was not found on the TV.")
                 elif report.removed:
-                    QMessageBox.information(
-                        window,
-                        "CleanYourTV Removed",
-                        "Google TV Launcher was restored and CleanYourTV was removed for Android user 0.\n\n"
-                        + "\n".join(report.messages),
-                    )
+                    QMessageBox.information(window, "CleanYourTV Removed", "Google TV Launcher was restored and CleanYourTV was removed for Android user 0.\n\n" + "\n".join(report.messages))
                 else:
                     QMessageBox.warning(window, "CleanYourTV", "\n".join(report.messages))
                 dialog.accept()
             except (TvUninstallError, AdbError, OSError, ValueError) as exc:
                 write_log(f"> TV REMOVAL ERROR: {exc}")
-                QMessageBox.critical(
-                    window,
-                    "Remove CleanYourTV from TV",
-                    f"{exc}\n\nRemoval stops if the stock Home verification fails.",
-                )
+                QMessageBox.critical(window, "Remove CleanYourTV from TV", f"{exc}\n\nRemoval stops if the stock Home verification fails.")
 
         run_button.clicked.connect(run_uninstall)
         dialog.exec()
@@ -350,24 +414,42 @@ def main() -> int:
     button("checkButton").clicked.connect(check_tv)
     button("installCleanButton").clicked.connect(open_install)
     button("installPageButton").clicked.connect(open_install)
-    button("themesQuickButton").clicked.connect(lambda: show_items("themes"))
-    button("addonsQuickButton").clicked.connect(lambda: show_items("addons"))
-    button("refreshThemesButton").clicked.connect(lambda: populate_directory("themes", "themesList"))
-    button("refreshAddonsButton").clicked.connect(lambda: populate_directory("addons", "addonsList"))
-    button("applyThemeButton").clicked.connect(apply_theme_help)
+    button("themesQuickButton").clicked.connect(lambda: (navigate("themesButton"), populate_themes()))
+    button("addonsQuickButton").clicked.connect(lambda: (navigate("addonsButton"), populate_addons()))
+    button("refreshThemesButton").clicked.connect(populate_themes)
+    button("refreshAddonsButton").clicked.connect(populate_addons)
+    button("applyThemeButton").clicked.connect(apply_selected_theme)
     button("backupQuickButton").clicked.connect(backup)
     button("createBackupButton").clicked.connect(backup)
     button("refreshBackupsButton").clicked.connect(refresh_backups)
     button("deleteCleanButton").clicked.connect(uninstall_clean_your_tv_locally)
     button("deleteCleanFromTvButton").clicked.connect(uninstall_clean_your_tv_from_tv)
 
+    # The XML UI keeps the main layout stable; these controls are added to its named
+    # action rows so the installation features remain real Qt Designer UI elements.
+    themes_layout = window.findChild(object, "themesActionLayout")
+    addons_layout = window.findChild(object, "addonsLayout")
+    if themes_layout is not None:
+        theme_install = QPushButton("Install Selected Theme")
+        theme_install.setProperty("class", "action")
+        theme_install.clicked.connect(apply_selected_theme)
+        themes_layout.addWidget(theme_install)
+        theme_reset = QPushButton("Reset Theme")
+        theme_reset.clicked.connect(reset_theme_on_tv)
+        themes_layout.addWidget(theme_reset)
+    if addons_layout is not None:
+        addon_install = QPushButton("Build & Install Selected Add-on")
+        addon_install.setProperty("class", "action")
+        addon_install.clicked.connect(install_selected_addon)
+        addons_layout.addWidget(addon_install)
+
     ip_edit.setText(os.environ.get("TV_HOST", ""))
     refresh_backups()
     write_log("> CleanYourTV Manager started")
-    write_log("> Unofficial community GUI; upstream CleanYourTV remains separate.")
+    write_log("> Themes: select a theme and use Install Selected Theme.")
+    write_log("> Add-ons: select an add-on and use Build & Install Selected Add-on.")
     write_log("> TV removal restores and verifies the stock Home before uninstalling.")
     navigate("homeButton")
-
     window.show()
     return app.exec()
 
