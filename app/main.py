@@ -7,8 +7,8 @@ from pathlib import Path
 from PySide6.QtCore import QFile
 from PySide6.QtWidgets import (
     QApplication,
-    QCheckBox,
     QButtonGroup,
+    QCheckBox,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -24,10 +24,12 @@ from app.core.adb import AdbClient, AdbError
 from app.core.backup import create_backup
 from app.core.clean_your_tv import LocalProject
 from app.core.paths import APP_ROOT, find_cleanyourtv
+from app.core.tv_uninstaller import TvUninstallError, uninstall_cleanyourtv_from_tv
 from app.core.uninstaller import UninstallError, uninstall_local_project
 
 UI_FILE = APP_ROOT / "app" / "ui" / "MainWindow.ui"
 UNINSTALL_UI_FILE = APP_ROOT / "app" / "ui" / "UninstallDialog.ui"
+TV_UNINSTALL_UI_FILE = APP_ROOT / "app" / "ui" / "TvUninstallDialog.ui"
 
 PAGES = {
     "homeButton": ("Главная", "homePage"),
@@ -65,15 +67,12 @@ def main() -> int:
         ip_edit = window.findChild(QLineEdit, "tvIp")
         if not all((stack, log, status, title, ip_edit)):
             raise RuntimeError("В MainWindow.ui отсутствует обязательный элемент управления.")
-
-        # Resolve pages once. setCurrentWidget() is more robust than relying on
-        # a page index and also makes the navigation code independent of UI order.
         pages: dict[str, QWidget] = {}
-        for button_name, (_, page_name) in PAGES.items():
+        for key, (_, page_name) in PAGES.items():
             page = window.findChild(QWidget, page_name)
             if page is None:
                 raise RuntimeError(f"В MainWindow.ui не найдена страница: {page_name}")
-            pages[button_name] = page
+            pages[key] = page
     except Exception as exc:
         QMessageBox.critical(None, "CleanYourTV Manager", str(exc))
         return 1
@@ -94,11 +93,7 @@ def main() -> int:
         root = find_cleanyourtv()
         if root is None:
             if show_warning:
-                QMessageBox.warning(
-                    window,
-                    "CleanYourTV",
-                    "Локальная папка CleanYourTV не найдена. Задайте CLEANYOURTV_ROOT в PowerShell.",
-                )
+                QMessageBox.warning(window, "CleanYourTV", "Локальная папка CleanYourTV не найдена. Задайте CLEANYOURTV_ROOT.")
             return None
         return LocalProject(root)
 
@@ -106,36 +101,47 @@ def main() -> int:
         status.setText(message)
         status.setStyleSheet(f"color:{color};font-weight:600;")
 
-    def navigate(button_name: str) -> None:
-        page_info = PAGES.get(button_name)
-        page = pages.get(button_name)
-        if page_info is None or page is None:
-            write_log(f"> Navigation error: unknown page key: {button_name}")
+    def navigate(key: str) -> None:
+        if key not in PAGES or key not in pages:
+            write_log(f"> Navigation error: {key}")
             return
-
-        label, _ = page_info
-        stack.setCurrentWidget(page)
+        label, _ = PAGES[key]
+        stack.setCurrentWidget(pages[key])
         title.setText(label)
-
-        for name in PAGES:
-            nav_button = window.findChild(QPushButton, name)
+        for button_name in PAGES:
+            nav_button = window.findChild(QPushButton, button_name)
             if nav_button is not None:
-                nav_button.setChecked(name == button_name)
-
+                nav_button.setChecked(button_name == key)
         write_log(f"> Opened page: {label}")
 
-    def connect_tv() -> None:
+    def adb_client(show_warning: bool = True) -> AdbClient | None:
         host = ip_edit.text().strip()
         if not host:
-            QMessageBox.warning(window, "IP телевизора", "Введите IP-адрес телевизора.")
-            return
+            if show_warning:
+                QMessageBox.warning(window, "IP телевизора", "Введите IP-адрес телевизора на главной странице.")
+            return None
         try:
             client = AdbClient(host)
+            # connect() is safe and idempotent for a device already reachable by ADB.
             output = client.connect()
+            write_log(output or f"> ADB connected: {client.serial}")
+            client.info()
+            return client
+        except (AdbError, OSError, ValueError) as exc:
+            write_log(f"> ADB ERROR: {exc}")
+            if show_warning:
+                QMessageBox.warning(window, "ADB", str(exc))
+            return None
+
+    def connect_tv() -> None:
+        client = adb_client()
+        if client is None:
+            set_status("●  ТВ недоступен", "#f05b5b")
+            return
+        try:
             info = client.info()
-            set_status(f"●  TV: {info.model or host}", "#52d273")
+            set_status(f"●  TV: {info.model or client.host}", "#52d273")
             write_log(f"> Connected: {info.serial}")
-            write_log(output or "> ADB connected")
             write_log(f"> Manufacturer: {info.manufacturer}")
             write_log(f"> Model: {info.model}")
             write_log(f"> Android: {info.android}")
@@ -145,17 +151,16 @@ def main() -> int:
             QMessageBox.warning(window, "ADB", str(exc))
 
     def check_tv() -> None:
-        host = ip_edit.text().strip()
-        if not host:
-            QMessageBox.warning(window, "IP телевизора", "Сначала введите IP-адрес.")
+        client = adb_client()
+        if client is None:
             return
         try:
-            info = AdbClient(host).info()
+            info = client.info()
             write_log(f"> Manufacturer: {info.manufacturer}")
             write_log(f"> Model: {info.model}")
             write_log(f"> Android: {info.android}")
             write_log(f"> ADB: {info.serial} ({info.state})")
-            set_status(f"●  TV: {info.model or host}", "#52d273")
+            set_status(f"●  TV: {info.model or client.host}", "#52d273")
         except (AdbError, OSError, ValueError) as exc:
             write_log(f"> CHECK ERROR: {exc}")
             set_status("●  ТВ недоступен", "#f05b5b")
@@ -170,11 +175,9 @@ def main() -> int:
             QMessageBox.warning(window, "CleanYourTV", f"Не найден установщик:\n{script}")
             return
         answer = QMessageBox.question(
-            window,
-            "Запустить установщик",
+            window, "Запустить установщик",
             "Откроется отдельное окно PowerShell с локальным установщиком CleanYourTV. Продолжить?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
         )
         if answer != QMessageBox.Yes:
             return
@@ -193,7 +196,7 @@ def main() -> int:
             target.addItem("Не найдена локальная папка CleanYourTV.")
             return
         items = current.list_directory(kind)
-        target.addItems(items if items else ["Каталоги не найдены."])
+        target.addItems(items or ["Каталоги не найдены."])
         write_log(f"> Loaded {len(items)} item(s) from {current.root / kind}")
 
     def show_items(kind: str) -> None:
@@ -226,12 +229,8 @@ def main() -> int:
         if not folder.is_dir():
             target.addItem("Резервных копий пока нет.")
             return
-        items = sorted(
-            (path for path in folder.iterdir() if path.is_dir()),
-            key=lambda path: path.stat().st_mtime,
-            reverse=True,
-        )
-        target.addItems([path.name for path in items] or ["Резервных копий пока нет."])
+        items = sorted((p for p in folder.iterdir() if p.is_dir()), key=lambda p: p.stat().st_mtime, reverse=True)
+        target.addItems([p.name for p in items] or ["Резервных копий пока нет."])
 
     def backup() -> None:
         current = project()
@@ -246,42 +245,110 @@ def main() -> int:
             write_log(f"> BACKUP ERROR: {exc}")
             QMessageBox.critical(window, "Резервная копия", str(exc))
 
-    def uninstall_clean_your_tv() -> None:
+    def uninstall_clean_your_tv_from_tv() -> None:
+        client = adb_client()
+        if client is None:
+            return
+        try:
+            info = client.info()
+            dialog = load_ui(TV_UNINSTALL_UI_FILE)
+        except Exception as exc:
+            QMessageBox.critical(window, "Удаление CleanYourTV с ТВ", str(exc))
+            return
+
+        device_label = dialog.findChild(QLabel, "deviceLabel")
+        confirm = dialog.findChild(QCheckBox, "confirmCheck")
+        test_only = dialog.findChild(QCheckBox, "testOnlyCheck")
+        run_button = dialog.findChild(QPushButton, "runButton")
+        cancel_button = dialog.findChild(QPushButton, "cancelButton")
+        if not all((device_label, confirm, test_only, run_button, cancel_button)):
+            QMessageBox.critical(window, "Удаление CleanYourTV с ТВ", "В окне подтверждения отсутствуют нужные элементы.")
+            return
+
+        device_label.setText(f"Устройство: {info.manufacturer} {info.model} | {client.serial}")
+        run_button.setEnabled(confirm.isChecked())
+
+        def update_button() -> None:
+            run_button.setText("Проверить готовность" if test_only.isChecked() else "Восстановить Home и удалить")
+            run_button.setEnabled(confirm.isChecked())
+
+        confirm.toggled.connect(update_button)
+        test_only.toggled.connect(update_button)
+        cancel_button.clicked.connect(dialog.reject)
+
+        def run_uninstall() -> None:
+            # The operation is deliberately limited to the connected TV package.
+            # TV input/tuner packages are never part of this workflow.
+            try:
+                report = uninstall_cleanyourtv_from_tv(client, confirmed=True if confirm.isChecked() else False)
+                for message in report.messages:
+                    write_log(f"> TV uninstall: {message}")
+                if not report.launcher_present:
+                    QMessageBox.information(window, "CleanYourTV", "Пакет CleanYourTV не найден на телевизоре.")
+                elif test_only.isChecked():
+                    QMessageBox.information(
+                        window, "Проверка готовности",
+                        "Проверка завершена. Стандартный Home подтверждён; пакет CleanYourTV не удалялся.\n\n"
+                        + "\n".join(report.messages),
+                    )
+                elif report.removed:
+                    QMessageBox.information(
+                        window, "CleanYourTV удалён",
+                        "Google TV Launcher восстановлен, а CleanYourTV удалён с ТВ для пользователя 0.\n\n"
+                        + "\n".join(report.messages),
+                    )
+                else:
+                    QMessageBox.warning(window, "CleanYourTV", "\n".join(report.messages))
+                dialog.accept()
+            except (TvUninstallError, AdbError, OSError, ValueError) as exc:
+                write_log(f"> TV UNINSTALL ERROR: {exc}")
+                QMessageBox.critical(
+                    window, "Удаление CleanYourTV с ТВ",
+                    f"{exc}\n\nУдаление останавливается при любой ошибке проверки Home.",
+                )
+
+        run_button.clicked.connect(run_uninstall)
+        dialog.exec()
+
+    def uninstall_clean_your_tv_locally() -> None:
         current = project()
         if current is None:
             return
         try:
             dialog = load_ui(UNINSTALL_UI_FILE)
         except Exception as exc:
-            QMessageBox.critical(window, "Удаление CleanYourTV", str(exc))
+            QMessageBox.critical(window, "Удаление локальной копии", str(exc))
             return
         path_label = dialog.findChild(QLabel, "pathLabel")
         confirm = dialog.findChild(QCheckBox, "confirmCheck")
         delete_button = dialog.findChild(QPushButton, "deleteButton")
         cancel_button = dialog.findChild(QPushButton, "cancelButton")
-        if not all((path_label, confirm, delete_button, cancel_button)):
-            QMessageBox.critical(window, "Удаление CleanYourTV", "Не удалось загрузить окно подтверждения.")
+        warning_text = dialog.findChild(QLabel, "warningText")
+        if not all((path_label, confirm, delete_button, cancel_button, warning_text)):
+            QMessageBox.critical(window, "Удаление локальной копии", "Окно подтверждения неполное.")
             return
-        path_label.setText(f"Путь: {current.root}")
+        warning_text.setText("Будет удалена только папка исходников CleanYourTV на этом компьютере. Телевизор не изменяется.")
+        path_label.setText(f"Путь на ПК: {current.root}")
+        confirm.setText("Я понимаю, что локальные файлы CleanYourTV будут удалены")
+        delete_button.setText("Удалить папку на ПК")
         delete_button.setEnabled(False)
         confirm.toggled.connect(delete_button.setEnabled)
         cancel_button.clicked.connect(dialog.reject)
 
         def accept_delete() -> None:
             try:
-                removed = uninstall_local_project(current.root, confirmed=True)
+                removed = uninstall_local_project(current.root, confirmed=confirm.isChecked())
                 write_log(f"> Local project removed: {removed}")
                 dialog.accept()
                 button("deleteCleanButton").setEnabled(False)
                 QMessageBox.information(window, "Удалено", "Удалена только локальная папка на ПК. Телевизор не изменялся.")
             except (UninstallError, OSError) as exc:
-                write_log(f"> UNINSTALL ERROR: {exc}")
-                QMessageBox.critical(window, "Удаление CleanYourTV", str(exc))
+                write_log(f"> LOCAL UNINSTALL ERROR: {exc}")
+                QMessageBox.critical(window, "Удаление локальной копии", str(exc))
 
         delete_button.clicked.connect(accept_delete)
         dialog.exec()
 
-    # Use a real exclusive button group so exactly one sidebar page is selected.
     nav_group = QButtonGroup(window)
     nav_group.setExclusive(True)
     for name in PAGES:
@@ -301,16 +368,15 @@ def main() -> int:
     button("backupQuickButton").clicked.connect(backup)
     button("createBackupButton").clicked.connect(backup)
     button("refreshBackupsButton").clicked.connect(refresh_backups)
-    button("deleteCleanButton").clicked.connect(uninstall_clean_your_tv)
+    button("deleteCleanButton").clicked.connect(uninstall_clean_your_tv_locally)
+    button("deleteCleanFromTvButton").clicked.connect(uninstall_clean_your_tv_from_tv)
 
     ip_edit.setText(os.environ.get("TV_HOST", ""))
     refresh_backups()
     write_log("> CleanYourTV Manager started")
     write_log("> Unofficial community GUI; upstream CleanYourTV remains separate.")
-    write_log("> Sidebar navigation is connected to actual stacked pages.")
-    write_log("> No Android package is disabled automatically.")
-
-    # Explicitly select the first page on startup.
+    write_log("> TV uninstall restores and verifies stock Home first.")
+    write_log("> No TV package is removed without an explicit confirmation.")
     navigate("homeButton")
 
     window.show()
