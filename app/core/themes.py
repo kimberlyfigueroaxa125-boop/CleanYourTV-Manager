@@ -37,26 +37,13 @@ def install_theme(project: LocalProject, theme: ThemeInfo, host: str) -> str:
         raise ThemeError(f"Theme '{theme.name}' has no config.json.")
 
     command = [
-        "powershell.exe",
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        str(script),
-        "-TvHost",
-        host.strip(),
-        str(theme.path),
+        "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+        "-File", str(script), "-TvHost", host.strip(), str(theme.path),
     ]
     try:
         result = subprocess.run(
-            command,
-            cwd=project.tools,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=180,
-            check=False,
+            command, cwd=project.tools, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=180, check=False,
         )
     except subprocess.TimeoutExpired as exc:
         raise ThemeError("Theme installation timed out after 180 seconds.") from exc
