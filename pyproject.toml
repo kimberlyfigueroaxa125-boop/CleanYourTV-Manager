@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cleanyourtv-manager"
+version = "0.1.0"
+description = "Unofficial community Windows GUI for CleanYourTV"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["PySide6>=6.8,<7"]
+license = { file = "LICENSE" }
+authors = [{ name = "CleanYourTV Manager community" }]
+
+[project.urls]
+Homepage = "https://github.com/kimberlyfigueroaxa125-boop/CleanYourTV-Manager"
+Upstream = "https://github.com/Gathin23/cleanyourtv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
