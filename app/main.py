@@ -427,8 +427,6 @@ def main() -> int:
     button("deleteCleanButton").clicked.connect(uninstall_clean_your_tv_locally)
     button("deleteCleanFromTvButton").clicked.connect(uninstall_clean_your_tv_from_tv)
 
-    # Add installation controls to the named XML layouts. This keeps the UI XML as
-    # the source of the page structure while the buttons remain ordinary Qt widgets.
     themes_layout = window.findChild(QHBoxLayout, "themesActionLayout")
     if themes_layout is not None:
         theme_install = QPushButton("Install Selected Theme")
