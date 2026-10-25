@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="windowTitle"><string>CleanYourTV Manager</string></property>
+  <property name="minimumSize"><size><width>980</width><height>620</height></size></property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="rootLayout">
+    <item>
+     <widget class="QFrame" name="sidebar">
+      <property name="minimumSize"><size><width>210</width><height>0</height></size></property>
+      <layout class="QVBoxLayout" name="sidebarLayout">
+       <item><widget class="QLabel" name="logo"><property name="text"><string>CLEAN YOUR TV</string></property></widget></item>
+       <item><widget class="QPushButton" name="homeButton"><property name="text"><string>⌂  Главная</string></property></widget></item>
+       <item><widget class="QPushButton" name="installButton"><property name="text"><string>▣  Установка</string></property></widget></item>
+       <item><widget class="QPushButton" name="themesButton"><property name="text"><string>🎨  Темы</string></property></widget></item>
+       <item><widget class="QPushButton" name="addonsButton"><property name="text"><string>🧩  Аддоны</string></property></widget></item>
+       <item><widget class="QPushButton" name="cleanupButton"><property name="text"><string>🧹  Очистка</string></property></widget></item>
+       <item><spacer name="sidebarSpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint"><size><width>20</width><height>40</height></size></property></spacer></item>
+       <item><widget class="QPushButton" name="backupButton"><property name="text"><string>💾  Резервная копия</string></property></widget></item>
+       <item><widget class="QPushButton" name="settingsButton"><property name="text"><string>⚙  Настройки</string></property></widget></item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QWidget" name="content">
+      <layout class="QVBoxLayout" name="contentLayout">
+       <item><widget class="QLabel" name="title"><property name="text"><string>CleanYourTV Manager</string></property></widget></item>
+       <item><widget class="QLabel" name="tvStatus"><property name="text"><string>●  TV не подключён</string></property></widget></item>
+       <item><widget class="QFrame" name="connectionCard">
+        <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
+        <layout class="QGridLayout" name="connectionLayout">
+         <item row="0" column="0"><widget class="QLabel" name="ipLabel"><property name="text"><string>IP телевизора</string></property></widget></item>
+         <item row="0" column="1"><widget class="QLineEdit" name="tvIp"><property name="placeholderText"><string>192.168.0.118</string></property></widget></item>
+         <item row="0" column="2"><widget class="QPushButton" name="connectButton"><property name="text"><string>Подключить</string></property></widget></item>
+        </layout>
+       </widget></item>
+       <item><widget class="QFrame" name="actionsCard">
+        <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
+        <layout class="QGridLayout" name="actionsLayout">
+         <item row="0" column="0"><widget class="QPushButton" name="checkButton"><property name="text"><string>🔍  Проверить ТВ</string></property></widget></item>
+         <item row="0" column="1"><widget class="QPushButton" name="installCleanButton"><property name="text"><string>📦  Установить CleanYourTV</string></property></widget></item>
+         <item row="1" column="0"><widget class="QPushButton" name="themesQuickButton"><property name="text"><string>🎨  Выбрать тему</string></property></widget></item>
+         <item row="1" column="1"><widget class="QPushButton" name="addonsQuickButton"><property name="text"><string>🧩  Аддоны</string></property></widget></item>
+        </layout>
+       </widget></item>
+       <item><widget class="QLabel" name="logLabel"><property name="text"><string>Журнал</string></property></widget></item>
+       <item><widget class="QPlainTextEdit" name="log"><property name="readOnly"><bool>true</bool></property><property name="placeholderText"><string>Здесь появится журнал операций...</string></property></widget></item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
