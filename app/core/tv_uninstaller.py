@@ -23,8 +23,28 @@ class TvUninstallReport:
 
 
 def package_installed(client: AdbClient, package: str) -> bool:
+    """Return whether the package APK is visible to the package manager."""
     result = client.run("shell", "pm", "path", package)
     return result.returncode == 0 and "package:" in result.stdout
+
+
+def package_enabled_for_user(client: AdbClient, package: str) -> bool:
+    result = client.run("shell", "pm", "list", "packages", "--user", "0", "-e", package)
+    if result.returncode != 0:
+        output = (result.stdout + result.stderr).strip()
+        raise TvUninstallError(output or f"Не удалось проверить пакет {package}.")
+    expected = f"package:{package}"
+    return any(line.strip() == expected for line in result.stdout.splitlines())
+
+
+def package_installed_for_user(client: AdbClient, package: str) -> bool:
+    """Check the user's package list, not pm path (system APKs can remain on disk)."""
+    result = client.run("shell", "pm", "list", "packages", "--user", "0", package)
+    if result.returncode != 0:
+        output = (result.stdout + result.stderr).strip()
+        raise TvUninstallError(output or f"Не удалось проверить установку пакета {package}.")
+    expected = f"package:{package}"
+    return any(line.strip() == expected for line in result.stdout.splitlines())
 
 
 def check_stock_home(client: AdbClient) -> tuple[bool, list[str]]:
@@ -35,18 +55,7 @@ def check_stock_home(client: AdbClient) -> tuple[bool, list[str]]:
             "Стандартный Google TV Launcher не найден. CleanYourTV удалять нельзя."
         )
 
-    enabled_result = client.run(
-        "shell", "pm", "list", "packages", "--user", "0", "-e", STOCK_LAUNCHER_PACKAGE
-    )
-    enabled_text = (enabled_result.stdout + enabled_result.stderr).strip()
-    if enabled_result.returncode != 0:
-        raise TvUninstallError(
-            "Не удалось проверить состояние Google TV Launcher: " + (enabled_text or "неизвестная ошибка")
-        )
-    enabled = any(
-        line.strip() == f"package:{STOCK_LAUNCHER_PACKAGE}"
-        for line in enabled_text.splitlines()
-    )
+    enabled = package_enabled_for_user(client, STOCK_LAUNCHER_PACKAGE)
     messages.append(
         "Google TV Launcher включён."
         if enabled
@@ -107,8 +116,7 @@ def restore_stock_home(client: AdbClient) -> list[str]:
     resolved = (resolved_result.stdout + resolved_result.stderr).strip()
     if resolved_result.returncode != 0:
         raise TvUninstallError(
-            "Не удалось проверить Home. CleanYourTV не удалён. "
-            + (resolved or "")
+            "Не удалось проверить Home. CleanYourTV не удалён. " + (resolved or "")
         )
     if STOCK_LAUNCHER_PACKAGE not in resolved or "MainActivity" not in resolved:
         raise TvUninstallError(
@@ -131,14 +139,14 @@ def uninstall_cleanyourtv_from_tv(
 
     client.info()
     messages = [f"Устройство подключено: {client.serial}"]
-    present = package_installed(client, CLEANYOURTV_PACKAGE)
+    present = package_installed_for_user(client, CLEANYOURTV_PACKAGE)
     if not present:
         return TvUninstallReport(
             launcher_present=False,
             stock_launcher_enabled=False,
             stock_home_resolved=False,
             removed=False,
-            messages=tuple(messages + [f"{CLEANYOURTV_PACKAGE} не найден на ТВ."]),
+            messages=tuple(messages + [f"{CLEANYOURTV_PACKAGE} не установлен для пользователя 0."]),
         )
 
     if dry_run:
@@ -155,13 +163,12 @@ def uninstall_cleanyourtv_from_tv(
             )
         return TvUninstallReport(
             launcher_present=True,
-            stock_launcher_enabled=any("Launcher включён" in message for message in checks),
+            stock_launcher_enabled=package_enabled_for_user(client, STOCK_LAUNCHER_PACKAGE),
             stock_home_resolved=stock_home,
             removed=False,
             messages=tuple(messages),
         )
 
-    # Destructive mode: restore Home first, then remove only the CleanYourTV launcher.
     messages.extend(restore_stock_home(client))
     result = client.run("shell", "pm", "uninstall", "--user", "0", CLEANYOURTV_PACKAGE)
     output = (result.stdout + result.stderr).strip()
@@ -171,9 +178,9 @@ def uninstall_cleanyourtv_from_tv(
             + (output or "неизвестная ошибка")
         )
 
-    if package_installed(client, CLEANYOURTV_PACKAGE):
+    if package_installed_for_user(client, CLEANYOURTV_PACKAGE):
         raise TvUninstallError(
-            "Команда удаления завершилась, но CleanYourTV всё ещё обнаруживается в системе. "
+            "Команда удаления завершилась, но CleanYourTV всё ещё установлен для пользователя 0. "
             "Проверьте состояние вручную."
         )
 
