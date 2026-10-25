@@ -23,100 +23,86 @@ class TvUninstallReport:
 
 
 def package_installed(client: AdbClient, package: str) -> bool:
+    """Check whether the APK path is visible to Android's package manager."""
     result = client.run("shell", "pm", "path", package)
     return result.returncode == 0 and "package:" in result.stdout
 
 
-def check_stock_home(client: AdbClient) -> tuple[bool, list[str]]:
-    """Read-only preflight. Do not change the device."""
-    messages: list[str] = []
-    if not package_installed(client, STOCK_LAUNCHER_PACKAGE):
-        raise TvUninstallError(
-            "Стандартный Google TV Launcher не найден. CleanYourTV удалять нельзя."
-        )
+def package_installed_for_user(client: AdbClient, package: str) -> bool:
+    """Check whether the package is installed for Android user 0."""
+    result = client.run("shell", "pm", "list", "packages", "--user", "0", package)
+    output = (result.stdout + result.stderr).strip()
+    if result.returncode != 0:
+        raise TvUninstallError(output or f"Не удалось проверить установку пакета {package}.")
+    return any(line.strip() == f"package:{package}" for line in result.stdout.splitlines())
 
-    enabled_result = client.run(
-        "shell", "pm", "list", "packages", "--user", "0", "-e", STOCK_LAUNCHER_PACKAGE
-    )
-    enabled_text = (enabled_result.stdout + enabled_result.stderr).strip()
-    if enabled_result.returncode != 0:
-        raise TvUninstallError(
-            "Не удалось проверить состояние Google TV Launcher: " + (enabled_text or "неизвестная ошибка")
-        )
-    enabled = any(
-        line.strip() == f"package:{STOCK_LAUNCHER_PACKAGE}"
-        for line in enabled_text.splitlines()
-    )
-    messages.append(
-        "Google TV Launcher включён."
-        if enabled
-        else "Google TV Launcher установлен, но сейчас отключён. Сухой запуск ничего не изменит."
-    )
 
-    resolved_result = client.run(
+def package_enabled_for_user(client: AdbClient, package: str) -> bool:
+    result = client.run("shell", "pm", "list", "packages", "--user", "0", "-e", package)
+    output = (result.stdout + result.stderr).strip()
+    if result.returncode != 0:
+        raise TvUninstallError(output or f"Не удалось проверить состояние пакета {package}.")
+    return any(line.strip() == f"package:{package}" for line in result.stdout.splitlines())
+
+
+def _resolve_home(client: AdbClient) -> str:
+    result = client.run(
         "shell", "cmd", "package", "resolve-activity", "--brief",
         "-a", "android.intent.action.MAIN",
         "-c", "android.intent.category.HOME",
     )
-    resolved = (resolved_result.stdout + resolved_result.stderr).strip()
-    if resolved_result.returncode != 0:
-        raise TvUninstallError(
-            "Не удалось проверить текущий Home: " + (resolved or "неизвестная ошибка")
-        )
+    output = (result.stdout + result.stderr).strip()
+    if result.returncode != 0:
+        raise TvUninstallError("Не удалось проверить текущий Home: " + (output or "неизвестная ошибка"))
+    return output
+
+
+def check_stock_home(client: AdbClient) -> tuple[bool, list[str]]:
+    """Read-only preflight; it never changes the TV."""
+    if not package_installed(client, STOCK_LAUNCHER_PACKAGE):
+        raise TvUninstallError("Стандартный Google TV Launcher не найден. CleanYourTV удалять нельзя.")
+
+    enabled = package_enabled_for_user(client, STOCK_LAUNCHER_PACKAGE)
+    messages = [
+        "Google TV Launcher включён."
+        if enabled
+        else "Google TV Launcher установлен, но сейчас отключён. Сухой запуск ничего не изменит."
+    ]
+
+    resolved = _resolve_home(client)
     stock_resolves = STOCK_LAUNCHER_PACKAGE in resolved and "MainActivity" in resolved
     messages.append(f"Текущий Home: {resolved or '(пусто)'}")
     return stock_resolves, messages
 
 
 def restore_stock_home(client: AdbClient) -> list[str]:
-    """Enable and select stock launcher, then verify the HOME resolver."""
-    messages: list[str] = []
+    """Enable and select the stock launcher, then verify the HOME resolver."""
     if not package_installed(client, STOCK_LAUNCHER_PACKAGE):
-        raise TvUninstallError(
-            "Стандартный Google TV Launcher не найден. CleanYourTV удалять нельзя."
-        )
+        raise TvUninstallError("Стандартный Google TV Launcher не найден. CleanYourTV удалять нельзя.")
 
-    enable = client.run(
-        "shell", "pm", "enable", "--user", "0", STOCK_LAUNCHER_PACKAGE
-    )
+    enable = client.run("shell", "pm", "enable", "--user", "0", STOCK_LAUNCHER_PACKAGE)
     output = (enable.stdout + enable.stderr).strip()
     if enable.returncode != 0:
-        raise TvUninstallError(
-            "Не удалось включить Google TV Launcher. CleanYourTV не удалён. "
-            + (output or "")
-        )
-    messages.append("Google TV Launcher включён.")
+        raise TvUninstallError("Не удалось включить Google TV Launcher. CleanYourTV не удалён. " + (output or ""))
 
     set_home = client.run(
-        "shell", "cmd", "package", "set-home-activity", "--user", "0",
-        STOCK_HOME_ACTIVITY,
+        "shell", "cmd", "package", "set-home-activity", "--user", "0", STOCK_HOME_ACTIVITY
     )
-    set_output = (set_home.stdout + set_home.stderr).strip()
+    output = (set_home.stdout + set_home.stderr).strip()
     if set_home.returncode != 0:
-        raise TvUninstallError(
-            "Не удалось назначить Google TV Launcher как Home. CleanYourTV не удалён. "
-            + (set_output or "")
-        )
-    messages.append("Запрошено назначение стандартного Home.")
+        raise TvUninstallError("Не удалось назначить Google TV Launcher как Home. CleanYourTV не удалён. " + (output or ""))
 
-    resolved_result = client.run(
-        "shell", "cmd", "package", "resolve-activity", "--brief",
-        "-a", "android.intent.action.MAIN",
-        "-c", "android.intent.category.HOME",
-    )
-    resolved = (resolved_result.stdout + resolved_result.stderr).strip()
-    if resolved_result.returncode != 0:
-        raise TvUninstallError(
-            "Не удалось проверить Home. CleanYourTV не удалён. "
-            + (resolved or "")
-        )
+    resolved = _resolve_home(client)
     if STOCK_LAUNCHER_PACKAGE not in resolved or "MainActivity" not in resolved:
         raise TvUninstallError(
             "Проверка Home не подтвердила Google TV Launcher. CleanYourTV не удалён. "
             f"Ответ системы: {resolved or '(пусто)'}"
         )
-    messages.append(f"Home проверен: {resolved}")
-    return messages
+    return [
+        "Google TV Launcher включён.",
+        "Запрошено назначение стандартного Home.",
+        f"Home проверен: {resolved}",
+    ]
 
 
 def uninstall_cleanyourtv_from_tv(
@@ -124,44 +110,36 @@ def uninstall_cleanyourtv_from_tv(
 ) -> TvUninstallReport:
     """Check stock Home and optionally uninstall CleanYourTV for Android user 0.
 
-    dry_run=True performs only read-only inspection. No settings or packages change.
+    dry_run=True performs read-only inspection. No settings or packages change.
     """
     if not confirmed:
         raise TvUninstallError("Требуется явное подтверждение удаления с телевизора.")
 
     client.info()
     messages = [f"Устройство подключено: {client.serial}"]
-    present = package_installed(client, CLEANYOURTV_PACKAGE)
+    present = package_installed_for_user(client, CLEANYOURTV_PACKAGE)
     if not present:
-        return TvUninstallReport(
-            launcher_present=False,
-            stock_launcher_enabled=False,
-            stock_home_resolved=False,
-            removed=False,
-            messages=tuple(messages + [f"{CLEANYOURTV_PACKAGE} не найден на ТВ."]),
-        )
+        messages.append(f"{CLEANYOURTV_PACKAGE} не установлен для пользователя 0.")
+        return TvUninstallReport(False, False, False, False, tuple(messages))
 
     if dry_run:
         stock_home, checks = check_stock_home(client)
         messages.extend(checks)
-        if not stock_home:
-            messages.append(
-                "Готовность не подтверждена. В сухом режиме изменения не выполнялись; "
-                "для реального удаления сначала восстановите штатный Home вручную."
-            )
+        if stock_home:
+            messages.append("Предварительные проверки пройдены. Сухой режим: пакет CleanYourTV не удалён.")
         else:
             messages.append(
-                "Предварительные проверки пройдены. Сухой режим: пакет CleanYourTV не удалён."
+                "Готовность не подтверждена. В сухом режиме настройки не менялись, пакет не удалён. "
+                "Сначала восстановите штатный Home и повторите проверку."
             )
         return TvUninstallReport(
             launcher_present=True,
-            stock_launcher_enabled=any("Launcher включён" in message for message in checks),
+            stock_launcher_enabled=package_enabled_for_user(client, STOCK_LAUNCHER_PACKAGE),
             stock_home_resolved=stock_home,
             removed=False,
             messages=tuple(messages),
         )
 
-    # Destructive mode: restore Home first, then remove only the CleanYourTV launcher.
     messages.extend(restore_stock_home(client))
     result = client.run("shell", "pm", "uninstall", "--user", "0", CLEANYOURTV_PACKAGE)
     output = (result.stdout + result.stderr).strip()
@@ -171,17 +149,12 @@ def uninstall_cleanyourtv_from_tv(
             + (output or "неизвестная ошибка")
         )
 
-    if package_installed(client, CLEANYOURTV_PACKAGE):
+    # pm path is not sufficient here: the APK may still reside in the system image.
+    if package_installed_for_user(client, CLEANYOURTV_PACKAGE):
         raise TvUninstallError(
-            "Команда удаления завершилась, но CleanYourTV всё ещё обнаруживается в системе. "
+            "Команда удаления завершилась, но CleanYourTV всё ещё установлен для пользователя 0. "
             "Проверьте состояние вручную."
         )
 
     messages.append(f"Удалён с ТВ для пользователя 0: {CLEANYOURTV_PACKAGE}")
-    return TvUninstallReport(
-        launcher_present=True,
-        stock_launcher_enabled=True,
-        stock_home_resolved=True,
-        removed=True,
-        messages=tuple(messages),
-    )
+    return TvUninstallReport(True, True, True, True, tuple(messages))
