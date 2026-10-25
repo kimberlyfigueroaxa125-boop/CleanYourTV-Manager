@@ -4,7 +4,6 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from .adb import AdbError
 from .clean_your_tv import LocalProject
 
 
@@ -68,6 +67,8 @@ def install_theme(project: LocalProject, theme: ThemeInfo, host: str) -> str:
 
 
 def reset_theme(project: LocalProject, host: str) -> str:
+    if not host.strip():
+        raise ThemeError("TV IP address is required.")
     script = project.tools / "theme.ps1"
     if not script.is_file():
         raise ThemeError(f"Theme installer was not found: {script}")
@@ -75,10 +76,13 @@ def reset_theme(project: LocalProject, host: str) -> str:
         "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
         "-File", str(script), "-TvHost", host.strip(), "-Reset",
     ]
-    result = subprocess.run(
-        command, cwd=project.tools, capture_output=True, text=True,
-        encoding="utf-8", errors="replace", timeout=180, check=False,
-    )
+    try:
+        result = subprocess.run(
+            command, cwd=project.tools, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=180, check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ThemeError("Theme reset timed out after 180 seconds.") from exc
     output = (result.stdout + result.stderr).strip()
     if result.returncode != 0:
         raise ThemeError(output or "Theme reset failed.")
