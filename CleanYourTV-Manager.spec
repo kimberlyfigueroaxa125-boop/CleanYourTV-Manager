@@ -3,14 +3,16 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_submodules
 
 root = Path(SPECPATH)
-
 hiddenimports = collect_submodules("PySide6")
 
 a = Analysis(
     [str(root / "app" / "main.py")],
     pathex=[str(root)],
     binaries=[],
-    datas=[(str(root / "app" / "ui" / "MainWindow.ui"), "app/ui")],
+    datas=[
+        (str(root / "app" / "ui" / "MainWindow.ui"), "app/ui"),
+        (str(root / "app" / "ui" / "UninstallDialog.ui"), "app/ui"),
+    ],
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
@@ -31,6 +33,6 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=False,
 )
