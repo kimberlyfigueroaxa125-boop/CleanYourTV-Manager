@@ -1,0 +1,1 @@
+"""CleanYourTV Manager application package."""
