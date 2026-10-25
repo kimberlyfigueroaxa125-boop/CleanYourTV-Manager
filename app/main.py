@@ -101,7 +101,7 @@ def main() -> int:
         if page_info is None:
             return
         label, page_name = page_info
-        page = window.findChild(QWidget, page_name)
+        page = stack.findChild(QWidget, page_name)
         if page is None:
             write_log(f"> Navigation error: page not found: {page_name}")
             return
