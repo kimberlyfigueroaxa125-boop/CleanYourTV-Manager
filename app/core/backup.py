@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import shutil
 from datetime import datetime
 from pathlib import Path
-import shutil
 
 
 IGNORED = shutil.ignore_patterns(".git", ".venv", "venv", "__pycache__", "*.pyc")
