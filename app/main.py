@@ -5,34 +5,36 @@ import sys
 
 from PySide6.QtCore import QFile
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtWidgets import QApplication, QMessageBox, QLineEdit, QLabel, QPlainTextEdit, QPushButton
+from PySide6.QtWidgets import QApplication, QMessageBox, QLineEdit, QLabel, QPlainTextEdit, QPushButton, QDialog, QCheckBox
 
 from app.core.adb import AdbClient, AdbError
 from app.core.backup import create_backup
 from app.core.clean_your_tv import LocalProject
 from app.core.paths import APP_ROOT, find_cleanyourtv
+from app.core.uninstaller import uninstall_local_project, UninstallError
 
 UI_FILE = APP_ROOT / "app" / "ui" / "MainWindow.ui"
+UNINSTALL_UI_FILE = APP_ROOT / "app" / "ui" / "UninstallDialog.ui"
 
 
-def load_ui():
+def load_ui(path):
     loader = QUiLoader()
-    ui_file = QFile(str(UI_FILE))
+    ui_file = QFile(str(path))
     if not ui_file.open(QFile.ReadOnly):
-        raise RuntimeError(f"Не удалось открыть UI: {UI_FILE}")
+        raise RuntimeError(f"Не удалось открыть UI: {path}")
     try:
         window = loader.load(ui_file)
     finally:
         ui_file.close()
     if window is None:
-        raise RuntimeError("Qt Designer UI не удалось загрузить.")
+        raise RuntimeError(f"Qt Designer UI не удалось загрузить: {path}")
     return window
 
 
 def main() -> int:
     app = QApplication(sys.argv)
     try:
-        window = load_ui()
+        window = load_ui(UI_FILE)
     except Exception as exc:
         QMessageBox.critical(None, "CleanYourTV Manager", str(exc))
         return 1
@@ -131,6 +133,43 @@ def main() -> int:
             write_log(f"> BACKUP ERROR: {exc}")
             QMessageBox.critical(window, "Резервная копия", str(exc))
 
+    def uninstall_clean_your_tv() -> None:
+        current = project()
+        if current is None:
+            return
+
+        dialog = load_ui(UNINSTALL_UI_FILE)
+        path_label = dialog.findChild(QLabel, "pathLabel")
+        confirm = dialog.findChild(QCheckBox, "confirmCheck")
+        delete_button = dialog.findChild(QPushButton, "deleteButton")
+        cancel_button = dialog.findChild(QPushButton, "cancelButton")
+        if path_label is None or confirm is None or delete_button is None or cancel_button is None:
+            QMessageBox.critical(window, "Удаление CleanYourTV", "Не удалось загрузить элементы окна удаления.")
+            return
+
+        path_label.setText(f"Путь: {current.root}")
+        delete_button.setEnabled(False)
+        confirm.toggled.connect(delete_button.setEnabled)
+        cancel_button.clicked.connect(dialog.reject)
+
+        def accept_delete() -> None:
+            try:
+                removed = uninstall_local_project(current.root, confirmed=True)
+                write_log(f"> CleanYourTV removed locally: {removed}")
+                dialog.accept()
+                button("deleteCleanButton").setEnabled(False)
+                QMessageBox.information(
+                    window,
+                    "CleanYourTV удалён",
+                    "Локальная папка CleanYourTV удалена. Телевизор и Android-пакеты не изменялись.",
+                )
+            except (UninstallError, OSError) as exc:
+                write_log(f"> UNINSTALL ERROR: {exc}")
+                QMessageBox.critical(window, "Удаление CleanYourTV", str(exc))
+
+        delete_button.clicked.connect(accept_delete)
+        dialog.exec()
+
     def navigate(label: str) -> None:
         if title is not None:
             title.setText(label)
@@ -142,6 +181,7 @@ def main() -> int:
     button("themesQuickButton").clicked.connect(lambda: show_items("themes"))
     button("addonsQuickButton").clicked.connect(lambda: show_items("addons"))
     button("backupQuickButton").clicked.connect(backup)
+    button("deleteCleanButton").clicked.connect(uninstall_clean_your_tv)
 
     navigation = {
         "homeButton": "Главная",
