@@ -8,7 +8,7 @@ APP_ROOT = Path(__file__).resolve().parents[2]
 
 
 def find_adb() -> str | None:
-    """Find adb from an explicit path, PATH, or common Android SDK locations."""
+    """Find adb using ADB_PATH, PATH or standard Windows SDK locations."""
     configured = os.environ.get("ADB_PATH", "").strip()
     if configured and Path(configured).is_file():
         return str(Path(configured).resolve())
@@ -31,7 +31,7 @@ def find_adb() -> str | None:
 
 
 def find_cleanyourtv() -> Path | None:
-    """Locate a local CleanYourTV checkout without assuming a specific username."""
+    """Locate a CleanYourTV checkout by explicit environment setting or common paths."""
     configured = os.environ.get("CLEANYOURTV_ROOT", "").strip()
     candidates: list[Path] = []
     if configured:
@@ -46,11 +46,11 @@ def find_cleanyourtv() -> Path | None:
         ]
     )
 
-    for path in candidates:
+    for candidate in candidates:
         try:
-            resolved = path.resolve()
+            path = candidate.resolve()
         except OSError:
             continue
-        if resolved.is_dir() and (resolved / "tools").is_dir():
-            return resolved
+        if path.is_dir() and (path / "tools").is_dir():
+            return path
     return None
