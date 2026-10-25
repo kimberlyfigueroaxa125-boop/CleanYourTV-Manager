@@ -1,12 +1,14 @@
-name: Build Windows
+name: Windows CI
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 jobs:
-  build:
+  quality:
+    name: Lint and test
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -16,18 +18,44 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
-      - name: Install dependencies
+      - name: Install development dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Compile Python files
+        run: python -m compileall -q app tests
+
+      - name: Ruff
+        run: ruff check app tests
+
+      - name: Pytest
+        run: pytest
+
+  build:
+    name: Build Windows executable
+    needs: quality
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
 
       - name: Build executable
-        run: |
-          pyinstaller --noconfirm --windowed --name CleanYourTV-Manager app/main.py
+        run: pyinstaller --noconfirm --clean CleanYourTV-Manager.spec
 
       - name: Upload build
         uses: actions/upload-artifact@v4
         with:
           name: CleanYourTV-Manager-Windows
-          path: dist/CleanYourTV-Manager
+          path: dist/CleanYourTV-Manager.exe
