@@ -5,16 +5,56 @@
   <property name="windowTitle"><string>Remove CleanYourTV from TV</string></property>
   <property name="minimumSize"><size><width>560</width><height>300</height></size></property>
   <layout class="QVBoxLayout" name="verticalLayout">
-   <item><widget class="QLabel" name="warningTitle"><property name="text"><string>Remove CleanYourTV from the TV?</string></property><property name="styleSheet"><string>font-size: 20px; font-weight: 700;</string></property></widget></item>
-   <item><widget class="QLabel" name="warningText"><property name="wordWrap"><bool>true</bool></property><property name="text"><string>The app will first enable the stock Google TV Launcher, set it as Home, and verify the result. If verification fails, CleanYourTV will not be removed. Only the CleanYourTV package for Android user 0 is targeted. Live TV and TV Input system packages are not modified.</string></property></widget></item>
-   <item><widget class="QLabel" name="deviceLabel"><property name="wordWrap"><bool>true</bool></property><property name="text"><string>Device: —</string></property></widget></item>
-   <item><widget class="QCheckBox" name="confirmCheck"><property name="text"><string>I understand that CleanYourTV will be removed from the TV</string></property></widget></item>
-   <item><spacer name="verticalSpacer"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="sizeHint"><size><width>20</width><height>20</height></size></spacer></item>
-   <item><layout class="QHBoxLayout" name="buttonsLayout">
-    <item><spacer name="horizontalSpacer"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="sizeHint"><size><width>40</width><height>20</height></size></spacer></item>
-    <item><widget class="QPushButton" name="cancelButton"><property name="text"><string>Cancel</string></property></widget></item>
-    <item><widget class="QPushButton" name="runButton"><property name="text"><string>Restore Home and Remove</string></property><property name="enabled"><bool>false</bool></property></widget></item>
-   </layout></item>
+   <item>
+    <widget class="QLabel" name="warningTitle">
+     <property name="text"><string>Remove CleanYourTV from the TV?</string></property>
+     <property name="styleSheet"><string>font-size: 20px; font-weight: 700;</string></property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="warningText">
+     <property name="wordWrap"><bool>true</bool></property>
+     <property name="text"><string>The app will first enable the stock Google TV Launcher, set it as Home, and verify the result. If verification fails, CleanYourTV will not be removed. Only the CleanYourTV package for Android user 0 is targeted. Live TV and TV Input system packages are not modified.</string></property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="deviceLabel">
+     <property name="wordWrap"><bool>true</bool></property>
+     <property name="text"><string>Device: —</string></property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="confirmCheck">
+     <property name="text"><string>I understand that CleanYourTV will be removed from the TV</string></property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation"><enum>Qt::Vertical</enum></property>
+     <property name="sizeHint"><size><width>20</width><height>20</height></size></property>
+    </spacer>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="buttonsLayout">
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation"><enum>Qt::Horizontal</enum></property>
+       <property name="sizeHint"><size><width>40</width><height>20</height></size></property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="cancelButton">
+       <property name="text"><string>Cancel</string></property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="runButton">
+       <property name="text"><string>Restore Home and Remove</string></property>
+       <property name="enabled"><bool>false</bool></property>
+      </widget>
+     </item>
+    </layout>
+   </item>
   </layout>
  </widget>
  <resources/>
