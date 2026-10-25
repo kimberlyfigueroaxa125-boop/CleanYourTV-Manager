@@ -19,3 +19,7 @@ Upstream = "https://github.com/Gathin23/cleanyourtv"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
