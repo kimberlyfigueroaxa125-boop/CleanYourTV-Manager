@@ -17,7 +17,10 @@
       <property name="maximumSize"><size><width>240</width><height>16777215</height></size></property>
       <property name="styleSheet"><string notr="true">QFrame#sidebar{background:#10141c;} QPushButton{color:#dbe4f0;background:transparent;border:0;padding:13px;text-align:left;font-size:14px;border-radius:8px;} QPushButton:hover{background:#1b2533;} QPushButton:checked{background:#243449;color:#ffffff;}</string></property>
       <layout class="QVBoxLayout" name="sideLayout">
-       <property name="contentsMargins"><left>10</left><top>18</top><right>10</right><bottom>18</bottom></property>
+       <property name="leftMargin"><number>10</number></property>
+       <property name="topMargin"><number>18</number></property>
+       <property name="rightMargin"><number>10</number></property>
+       <property name="bottomMargin"><number>18</number></property>
        <item><widget class="QLabel" name="logo"><property name="text"><string>CLEAN YOUR TV</string></property><property name="styleSheet"><string>font-size:20px;font-weight:700;color:white;padding:12px;</string></property></widget></item>
        <item><widget class="QLabel" name="brandSub"><property name="text"><string>Community Manager</string></property><property name="styleSheet"><string>color:#8190a5;padding:0 12px 12px;</string></property></widget></item>
        <item><widget class="QPushButton" name="homeButton"><property name="text"><string>⌂  Главная</string></property><property name="checkable"><bool>true</bool></property><property name="checked"><bool>true</bool></property></widget></item>
